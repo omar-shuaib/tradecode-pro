@@ -94,18 +94,24 @@ async function loadJson<T>(url: URL): Promise<T> {
   return JSON.parse(await readFile(url, "utf8")) as T;
 }
 
-async function localIndia() {
-  localIndiaCache ??= await loadJson<LocalIndiaRow[]>(localIndiaPath);
+async function localIndia(): Promise<LocalIndiaRow[]> {
+  localIndiaCache ??= await loadJson<LocalIndiaRow[]>(localIndiaPath).catch(() => [] as LocalIndiaRow[]);
+  if (localIndiaCache.length === 0) {
+    localIndiaCache = await db.$queryRaw<LocalIndiaRow[]>`SELECT hs_code, description_en, description_hi, chapter, section, bcd_rate, igst_rate, sws_rate, import_policy, requires_licence, requires_inspection, inspection_agency, is_restricted, is_prohibited, data_source, last_updated::text FROM hs_codes_india`;
+  }
   return localIndiaCache;
 }
 
-async function localChina() {
-  localChinaCache ??= await loadJson<LocalChinaRow[]>(localChinaPath);
+async function localChina(): Promise<LocalChinaRow[]> {
+  localChinaCache ??= await loadJson<LocalChinaRow[]>(localChinaPath).catch(() => [] as LocalChinaRow[]);
+  if (localChinaCache.length === 0) {
+    localChinaCache = await db.$queryRaw<LocalChinaRow[]>`SELECT hs_code_8, hs_code, hs_code_10, chapter, section, description_en, description_zh, mfn_duty_rate, vat_rate, requires_licence, ciq_inspection, is_restricted, is_prohibited, supervisory_conditions, data_source, last_updated::text FROM hs_codes_china`;
+  }
   return localChinaCache;
 }
 
 async function candidates() {
-  candidateCache ??= await loadJson<CandidateRow[]>(candidatePath);
+  candidateCache ??= await loadJson<CandidateRow[]>(candidatePath).catch(() => [] as CandidateRow[]);
   return candidateCache;
 }
 
