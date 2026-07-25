@@ -1,0 +1,2 @@
+import { PostgresSearchProvider } from "./postgres.adapter.js";import { TypesenseSearchProvider } from "./typesense.adapter.js";
+export function createSearchProvider(){if(process.env.SEARCH_PROVIDER==="typesense"){if(process.env.TYPESENSE_HOST)return new TypesenseSearchProvider(process.env.TYPESENSE_HOST);console.warn("SEARCH_PROVIDER=typesense without TYPESENSE_HOST; falling back to postgres")}return new PostgresSearchProvider()}

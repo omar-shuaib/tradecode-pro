@@ -1,0 +1,3 @@
+import { PrismaClient } from "@prisma/client";
+async function main(){const db=new PrismaClient(),cn=await db.chinaHsCode.findMany(),ind=await db.indiaHsCode.findMany();let count=0;for(const c of cn)for(const i of ind)if(c.hsCode8.slice(0,6)===i.hsCode.slice(0,6)){await db.bilateralMapping.upsert({where:{chinaHsCode8_indiaHsCode:{chinaHsCode8:c.hsCode8,indiaHsCode:i.hsCode}},create:{chinaHsCode8:c.hsCode8,indiaHsCode:i.hsCode,matchConfidence:c.hsCode8===i.hsCode?0.9:0.7,matchMethod:"exact_6digit"},update:{}});count++}console.log(`Generated ${count} mappings`);await db.$disconnect()}
+main().catch(error=>{console.error(error);process.exitCode=1});

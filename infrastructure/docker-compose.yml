@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: tradecode
+      POSTGRES_USER: tradecode
+      POSTGRES_PASSWORD: tradecode
+    ports: ["5432:5432"]
+    volumes: [postgres-data:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    build: ../apps/api
+    environment:
+      DATABASE_URL: postgresql://tradecode:tradecode@postgres:5432/tradecode
+      PORT: 4000
+      WEB_ORIGIN: http://localhost:3000
+    depends_on: [postgres, redis]
+    ports: ["4000:4000"]
+  web:
+    build: ../apps/web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    depends_on: [api]
+    ports: ["3000:3000"]
+  # Uncomment to run Typesense locally for development and testing. Not used in production v1.
+  # typesense:
+  #   image: typesense/typesense:27.1
+  #   command: --data-dir /data --api-key=local-dev-key --enable-cors
+  #   ports: ["8108:8108"]
+volumes:
+  postgres-data:

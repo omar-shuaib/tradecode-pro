@@ -1,0 +1,33 @@
+{
+  "name": "tradecode-pro",
+  "private": true,
+  "packageManager": "npm@11.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "npm run validate-fixtures && turbo typecheck",
+    "seed": "tsx scripts/seed.ts",
+    "validate-fixtures": "tsx scripts/validate-fixtures.ts",
+    "generate-mappings": "tsx scripts/generate-mappings.ts",
+    "scrape-india": "tsx scripts/scrape-india.ts",
+    "scrape-china": "tsx scripts/scrape-china.ts",
+    "index": "tsx scripts/index.ts"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.0.0",
+    "csv-parse": "^5.0.0",
+    "eslint": "^9.0.0",
+    "playwright": "^1.0.0",
+    "prettier": "^3.0.0",
+    "prisma": "^6.19.0",
+    "tsx": "^4.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  }
+}

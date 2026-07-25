@@ -1,0 +1,29 @@
+import "./globals.css";
+import type { Metadata } from "next";
+import { ThemeProvider } from "../components/ThemeProvider";
+import { Header } from "../components/Header";
+import { ErrorCapture } from "../components/ErrorCapture";
+
+export const metadata: Metadata = {
+  title: "TradeCode Pro",
+  description: "Free HS code search and bilateral trade comparison for China and India",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <Header />
+          <div style={{ paddingTop: 64 }}>{children}</div>
+          <ErrorCapture />
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}

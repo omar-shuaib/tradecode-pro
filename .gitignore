@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+.turbo
+.env
+.env.*
+!.env.example
+!.env.local
+data/*.csv
+data/fixtures/local-*.json
+data/fixtures/seed-dev.json
+data/fixtures/unverified-candidates.json
+data/china-scrape-checkpoint.json
+coverage
+.vercel
+*.log
+.trunk

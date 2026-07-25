@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: tradecode-api
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install && npx prisma@6.19.0 generate --schema=apps/api/prisma/schema.prisma
+    startCommand: npx tsx apps/api/src/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: WEB_ORIGIN
+        value: https://tradecode-pro.vercel.app
+      - key: SEARCH_PROVIDER
+        value: postgres
+      - key: GEMINI_DAILY_REQUEST_LIMIT
+        value: "250"
