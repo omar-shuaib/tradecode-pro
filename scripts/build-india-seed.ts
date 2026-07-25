@@ -52,61 +52,85 @@ function parseCsvLine(line: string) {
 }
 
 async function main() {
-  const inputPaths = [
-    "..\\india hs code datafile.csv",
-    "..\\indiahscodes.csv",
-    "C:\\Users\\ADMIN\\OneDrive\\Desktop\\PROJECTS\\Trade Code pro\\india hs code datafile.csv",
-    "C:\\Users\\ADMIN\\OneDrive\\Desktop\\PROJECTS\\Trade Code pro\\indiahscodes.csv",
+  const allRows: Record<string, string>[] = [];
+  const seenCodes = new Set<string>();
+
+  const fileGroups = [
+    {
+      label: "datafile",
+      paths: [
+        "..\\india hs code datafile.csv",
+        "C:\\Users\\ADMIN\\OneDrive\\Desktop\\PROJECTS\\Trade Code pro\\india hs code datafile.csv",
+      ],
+    },
+    {
+      label: "10digit",
+      paths: [
+        "..\\indiahscodes.csv",
+        "C:\\Users\\ADMIN\\OneDrive\\Desktop\\PROJECTS\\Trade Code pro\\indiahscodes.csv",
+      ],
+    },
   ];
-  let csvText: string | null = null;
-  for (const inputPath of inputPaths) {
-    try {
-      csvText = await readFile(inputPath, "utf8");
-      console.log(`Using India source CSV: ${inputPath}`);
-      break;
-    } catch {
-      // try next path
+
+  for (const group of fileGroups) {
+    let csvText: string | null = null;
+    for (const inputPath of group.paths) {
+      try {
+        csvText = await readFile(inputPath, "utf8");
+        console.log(`Loaded ${group.label} CSV: ${inputPath}`);
+        break;
+      } catch {
+        // try next path
+      }
+    }
+    if (!csvText) {
+      console.log(`Skipping ${group.label} CSV (not found)`);
+      continue;
+    }
+    const lines = csvText.split(/\r?\n/).filter(Boolean);
+    const headers = parseCsvLine(lines.shift() ?? "");
+    for (const line of lines) {
+      const values = parseCsvLine(line);
+      const row = headers.reduce<Record<string, string>>((acc, header, index) => {
+        acc[header] = values[index] ?? "";
+        return acc;
+      }, {});
+      allRows.push(row);
     }
   }
-  if (!csvText) throw new Error("Could not find an India source CSV. Place india hs code datafile.csv in the repo root.");
-  const lines = csvText.split(/\r?\n/).filter(Boolean);
-  const headers = parseCsvLine(lines.shift() ?? "");
-  const rows = lines.map((line) => {
-    const values = parseCsvLine(line);
-    return headers.reduce<Record<string, string>>((acc, header, index) => {
-      acc[header] = values[index] ?? "";
-      return acc;
-    }, {});
-  });
 
-  const seedRows: SeedRow[] = rows
-    .map((row) => {
-      const hsCode = String(row["ITC(HS)"] ?? row.hscode ?? row.hs_code ?? "").replace(/\D/g, "").slice(0, 8);
-      const desc = normalizeText(String(row.Description ?? row.description ?? ""));
-      const policy = normalizeText(String(row.Policy ?? row.policy ?? ""));
-      const condition = normalizeText(String(row.Condition ?? row.condition ?? ""));
-      const special85371090 = hsCode === "85371090";
-      return {
-        country: "IN",
-        hs_code: hsCode,
-        description_en: desc,
-        description_hi: undefined,
-        chapter: hsCode.slice(0, 2),
-        section: undefined,
-        bcd_rate: special85371090 ? 15 : null,
-        igst_rate: special85371090 ? 18 : null,
-        sws_rate: 10,
-        import_policy: policy || "Free",
-        requires_licence: /licen[cs]e|permit/i.test(policy + " " + condition),
-        requires_inspection: /inspection|qat|quarantine|phyto|veterinary/i.test(condition),
-        inspection_agency: /inspection/i.test(condition) ? "Specified authority" : undefined,
-        is_restricted: /restricted/i.test(policy),
-        is_prohibited: /prohibited/i.test(policy),
-        data_source: "indiahscodes.csv local fixture",
-        last_updated: "2026-06-18T00:00:00.000Z",
-      };
-    })
-    .filter((row) => row.hs_code.length === 8);
+  if (!allRows.length) throw new Error("Could not find any India source CSVs.");
+
+  const seedRows: SeedRow[] = [];
+  for (const row of allRows) {
+    const hsCode = String(row["ITC(HS)"] ?? row.hscode ?? row.hs_code ?? "").replace(/\D/g, "").slice(0, 8);
+    if (hsCode.length !== 8) continue;
+    if (seenCodes.has(hsCode)) continue;
+    seenCodes.add(hsCode);
+    const desc = normalizeText(String(row.Description ?? row.description ?? ""));
+    const policy = normalizeText(String(row.Policy ?? row.policy ?? ""));
+    const condition = normalizeText(String(row.Condition ?? row.condition ?? ""));
+    const special85371090 = hsCode === "85371090";
+    seedRows.push({
+      country: "IN",
+      hs_code: hsCode,
+      description_en: desc,
+      description_hi: undefined,
+      chapter: hsCode.slice(0, 2),
+      section: undefined,
+      bcd_rate: special85371090 ? 15 : null,
+      igst_rate: special85371090 ? 18 : null,
+      sws_rate: 10,
+      import_policy: policy || "Free",
+      requires_licence: /licen[cs]e|permit/i.test(policy + " " + condition),
+      requires_inspection: /inspection|qat|quarantine|phyto|veterinary/i.test(condition),
+      inspection_agency: /inspection/i.test(condition) ? "Specified authority" : undefined,
+      is_restricted: /restricted/i.test(policy),
+      is_prohibited: /prohibited/i.test(policy),
+      data_source: "india-hs-csv local fixture",
+      last_updated: "2026-06-18T00:00:00.000Z",
+    });
+  }
 
   if (!seedRows.some((row) => row.hs_code === "85371090")) {
     seedRows.unshift({
