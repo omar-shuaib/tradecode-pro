@@ -251,18 +251,20 @@ async function fallbackSearch(q: string, country: "CN" | "IN" | "AE" | "BOTH", l
     ...chinaRows.map((row) => toSearchResult(mergeChinaRates(row), "CN")),
     ...uaeRows.map((row) => toSearchResultUae(row)),
   ]
-    .filter((row) => country === "BOTH" || row.country === country)
-    .filter((row) => {
-      if (!needle) return true;
-      return (
-        String(row.hsCode).includes(needle) ||
-        String(row.descriptionEn ?? "").toLowerCase().includes(needle) ||
-        String(row.descriptionLocal ?? "").toLowerCase().includes(needle)
-      );
-    });
+    .filter((row) => country === "BOTH" || row.country === country);
+
+  if (!needle) return rows.slice(0, limit);
+
+  const scored = rows
+    .map((row) => ({
+      ...row,
+      score: scoreMatch(q, `${row.hsCode} ${row.descriptionEn} ${row.descriptionLocal ?? ""}`),
+    }))
+    .filter((row) => row.score > 0.05)
+    .sort((a, b) => b.score - a.score);
 
   const seen = new Set<string>();
-  return rows.filter((row) => {
+  return scored.filter((row) => {
     const key = `${row.country}-${row.hsCode}-${row.descriptionEn}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -524,11 +526,45 @@ app.get("/api/v1/browse/:country", async (req, res) => {
     }
 
     if (q) {
-      mapped = mapped.filter((r) =>
-        String(r.hsCode).includes(q) ||
-        String(r.descriptionEn).toLowerCase().includes(q) ||
-        String(r.descriptionLocal).toLowerCase().includes(q)
-      );
+      const words = q.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+      if (words.length > 0) {
+        // Score each row by word-level matching for proper relevance
+        const scored = mapped.map((r) => {
+          const desc = String(r.descriptionEn).toLowerCase();
+          const local = String(r.descriptionLocal || "").toLowerCase();
+          const hs = String(r.hsCode).toLowerCase();
+          const combined = `${desc} ${local}`;
+
+          // Exact phrase match → highest score
+          if (desc.includes(q.toLowerCase()) || combined.includes(q.toLowerCase())) {
+            return { row: r, score: 1.0 };
+          }
+
+          // All words present → high score
+          const matchedWords = words.filter((w) => combined.includes(w) || hs.includes(w));
+          const coverage = matchedWords.length / words.length;
+
+          if (coverage === 1) {
+            return { row: r, score: 0.7 + 0.25 * coverage };
+          }
+          if (coverage >= 0.5) {
+            return { row: r, score: 0.4 + 0.3 * coverage };
+          }
+          if (coverage > 0) {
+            return { row: r, score: 0.1 + 0.2 * coverage };
+          }
+          return { row: r, score: 0 };
+        });
+
+        mapped = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).map((s) => s.row);
+      } else {
+        // Single character query — simple substring match
+        mapped = mapped.filter((r) =>
+          String(r.hsCode).includes(q.toLowerCase()) ||
+          String(r.descriptionEn).toLowerCase().includes(q.toLowerCase()) ||
+          String(r.descriptionLocal || "").toLowerCase().includes(q.toLowerCase())
+        );
+      }
     }
 
     const total = mapped.length;
