@@ -4,7 +4,7 @@ import { Shield, CheckCircle, AlertTriangle, XCircle, Flag } from "lucide-react"
 import { useTranslation } from "../lib/i18n";
 
 type Code = {
-  country: "CN" | "IN";
+  country: "CN" | "IN" | "AE";
   requiresLicence?: boolean | null;
   requiresInspection?: boolean | null;
   inspectionAgency?: string | null;
@@ -106,8 +106,8 @@ export function CompliancePanel({ code }: { code: Code }) {
           style={{
             marginLeft: "auto",
             backgroundColor:
-              code.country === "CN" ? "var(--warning-light)" : "var(--success-light)",
-            color: code.country === "CN" ? "var(--warning)" : "var(--success)",
+              code.country === "CN" ? "var(--warning-light)" : code.country === "IN" ? "var(--success-light)" : "#e0f2fe",
+            color: code.country === "CN" ? "var(--warning)" : code.country === "IN" ? "var(--success)" : "#0284c7",
             fontSize: 11,
             fontWeight: 600,
           }}

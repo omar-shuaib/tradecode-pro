@@ -9,11 +9,11 @@ import { cn } from "../../lib/utils";
 
 function normalizeResult(item: any) {
   return {
-    country: item.country ?? "IN",
+    country: item.country ?? "CN",
     hsCode: item.hsCode ?? item.hs_code ?? item.code ?? "unknown",
     descriptionEn: item.descriptionEn ?? item.description_en ?? item.description ?? "No description",
     descriptionLocal: item.descriptionLocal ?? item.description_local ?? null,
-    dutyRate: item.dutyRate ?? item.duty_rate ?? item.bcd_rate ?? item.mfn_duty_rate ?? null,
+    dutyRate: item.dutyRate ?? item.duty_rate ?? item.bcd_rate ?? item.mfn_duty_rate ?? item.customs_duty_rate ?? null,
     secondaryRate: item.secondaryRate ?? item.secondary_rate ?? item.igst_rate ?? item.vat_rate ?? null,
     requiresLicence: Boolean(item.requiresLicence ?? item.requires_licence),
     requiresInspection: Boolean(item.requiresInspection ?? item.requires_inspection),
@@ -214,7 +214,7 @@ export default function ClassifyPage() {
               >
                 {items.map((item: ReturnType<typeof normalizeResult>, i: number) => {
                   const hasComplianceNote = item.requiresLicence || item.isRestricted || item.isProhibited;
-                  const dutyHigh = item.country === "CN" ? 13 : 15;
+                  const dutyHigh = item.country === "CN" ? 13 : item.country === "IN" ? 15 : 10;
                   const isHighDuty = (item.dutyRate ?? 0) >= dutyHigh;
 
                   return (
@@ -240,14 +240,14 @@ export default function ClassifyPage() {
                           <span
                             className="badge"
                             style={{
-                              backgroundColor: item.country === "CN" ? "var(--warning-light)" : "var(--success-light)",
-                              color: item.country === "CN" ? "var(--warning)" : "var(--success)",
+                              backgroundColor: item.country === "CN" ? "var(--warning-light)" : item.country === "IN" ? "var(--success-light)" : "#e0f2fe",
+                              color: item.country === "CN" ? "var(--warning)" : item.country === "IN" ? "var(--success)" : "#0284c7",
                               fontSize: 11,
                               padding: "1px 8px",
                               alignSelf: "flex-start",
                             }}
                           >
-                            {item.country === "CN" ? t("common.china") : t("common.india")}
+                            {item.country === "CN" ? t("common.china") : item.country === "IN" ? t("common.india") : t("common.uae")}
                           </span>
                         </div>
                         <span

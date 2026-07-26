@@ -9,7 +9,7 @@ import { CompliancePanel } from "./CompliancePanel";
 import { DutyDisclaimer } from "./DutyDisclaimer";
 
 type CountrySide = {
-  country: "CN" | "IN";
+  country: "CN" | "IN" | "AE";
   hsCode: string;
   descriptionEn: string;
   descriptionLocal?: string;
@@ -237,7 +237,8 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cif, setCif] = useState(10000);
-  const [dutyResult, setDutyResult] = useState<any>(null);
+  const [indiaDutyResult, setIndiaDutyResult] = useState<any>(null);
+  const [uaeDutyResult, setUaeDutyResult] = useState<any>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -271,28 +272,52 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
   const uae = match?.uae ?? null;
 
   const indiaDuty = useMemo(() => {
-    if (!dutyResult) return null;
-    return dutyResult.lines as DutyLine[];
-  }, [dutyResult]);
+    if (!indiaDutyResult) return null;
+    return indiaDutyResult.lines as DutyLine[];
+  }, [indiaDutyResult]);
+
+  const uaeDuty = useMemo(() => {
+    if (!uaeDutyResult) return null;
+    return uaeDutyResult.lines as DutyLine[];
+  }, [uaeDutyResult]);
 
   useEffect(() => {
     let active = true;
     if (!india) {
-      setDutyResult(null);
+      setIndiaDutyResult(null);
       return;
     }
     api
       .duty({ country: "IN", hsCode: india.hsCode, cifUsd: cif, landingChargesUsd: 0 })
       .then((res) => {
-        if (active) setDutyResult(res);
+        if (active) setIndiaDutyResult(res);
       })
       .catch(() => {
-        if (active) setDutyResult(null);
+        if (active) setIndiaDutyResult(null);
       });
     return () => {
       active = false;
     };
   }, [cif, india]);
+
+  useEffect(() => {
+    let active = true;
+    if (!uae) {
+      setUaeDutyResult(null);
+      return;
+    }
+    api
+      .duty({ country: "AE", hsCode: uae.hsCode, cifUsd: cif, landingChargesUsd: 0 })
+      .then((res) => {
+        if (active) setUaeDutyResult(res);
+      })
+      .catch(() => {
+        if (active) setUaeDutyResult(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [cif, uae]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -403,6 +428,9 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
   const localTitle = china?.descriptionLocal ?? india?.descriptionLocal ?? uae?.descriptionLocal ?? "";
   const totalIncidence = indiaDuty?.length
     ? indiaDuty.reduce((sum, line) => sum + line.amount, 0)
+    : null;
+  const uaeTotalIncidence = uaeDuty?.length
+    ? uaeDuty.reduce((sum, line) => sum + line.amount, 0)
     : null;
 
   return (
@@ -539,7 +567,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                 </button>
               </div>
 
-              {dutyResult ? (
+              {indiaDutyResult ? (
                 <div style={{ marginTop: 16 }}>
                   <div
                     style={{
@@ -585,7 +613,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                       >
                         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>{t("popup.landed.cost")}</span>
                         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "var(--accent)" }}>
-                          {Number(dutyResult.landedCost).toFixed(2)} USD
+                          {Number(indiaDutyResult.landedCost).toFixed(2)} USD
                         </span>
                       </div>
                     </div>
@@ -606,7 +634,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                         </div>
                       )}
                       <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                        {t("popup.fx", { rate: dutyResult.exchangeRate, currency: dutyResult.currency, date: dutyResult.effectiveDate })}
+                        {t("popup.fx", { rate: indiaDutyResult.exchangeRate, currency: indiaDutyResult.currency, date: indiaDutyResult.effectiveDate })}
                       </p>
                     </div>
                   </div>
@@ -646,7 +674,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                 </button>
               </div>
 
-              {dutyResult ? (
+              {uaeDutyResult ? (
                 <div style={{ marginTop: 16 }}>
                   <div
                     style={{
@@ -661,14 +689,14 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                         {t("popup.uae.breakdown")}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                        {indiaDuty?.map((line, i) => (
+                        {uaeDuty?.map((line, i) => (
                           <div
                             key={line.label}
                             style={{
                               display: "flex",
                               justifyContent: "space-between",
                               padding: "8px 0",
-                              borderBottom: i < (indiaDuty?.length ?? 0) - 1 ? "1px solid var(--border)" : "none",
+                              borderBottom: i < (uaeDuty?.length ?? 0) - 1 ? "1px solid var(--border)" : "none",
                               fontSize: 13,
                             }}
                           >
@@ -692,12 +720,12 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                       >
                         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>{t("popup.landed.cost")}</span>
                         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "var(--accent)" }}>
-                          {Number(dutyResult.landedCost).toFixed(2)} USD
+                          {Number(uaeDutyResult.landedCost).toFixed(2)} USD
                         </span>
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, justifyContent: "center" }}>
-                      {totalIncidence != null && (
+                      {uaeTotalIncidence != null && (
                         <div
                           style={{
                             padding: "12px 16px",
@@ -708,12 +736,12 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                         >
                           <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{t("popup.total")}</div>
                           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>
-                            ~{totalIncidence.toFixed(1)}%
+                            ~{uaeTotalIncidence.toFixed(1)}%
                           </div>
                         </div>
                       )}
                       <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                        {t("popup.fx", { rate: dutyResult.exchangeRate, currency: dutyResult.currency, date: dutyResult.effectiveDate })}
+                        {t("popup.fx", { rate: uaeDutyResult.exchangeRate, currency: uaeDutyResult.currency, date: uaeDutyResult.effectiveDate })}
                       </p>
                     </div>
                   </div>
@@ -736,9 +764,9 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
           }}
           className="detail-split-responsive"
         >
-          {china && <CompliancePanel code={china as any} />}
-          {india && <CompliancePanel code={india as any} />}
-          {uae && <CompliancePanel code={uae as any} />}
+          {china && <CompliancePanel code={china} />}
+          {india && <CompliancePanel code={india} />}
+          {uae && <CompliancePanel code={uae} />}
         </div>
 
         <div style={{ padding: "0 20px 20px" }}>
