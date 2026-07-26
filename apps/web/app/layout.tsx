@@ -7,7 +7,7 @@ import { ErrorCapture } from "../components/ErrorCapture";
 
 export const metadata: Metadata = {
   title: "TradeCode Pro",
-  description: "Free HS code search and bilateral trade comparison for China and India",
+  description: "Free HS code search and trade comparison for China, India and UAE",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
