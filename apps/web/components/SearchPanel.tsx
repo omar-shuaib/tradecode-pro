@@ -9,12 +9,18 @@ import { CodePopup } from "./CodePopup";
 import { Search, X } from "lucide-react";
 
 function CountryBadge({ country }: { country: string }) {
+  const colorMap: Record<string, { bg: string; fg: string }> = {
+    CN: { bg: "var(--warning-light)", fg: "var(--warning)" },
+    IN: { bg: "var(--success-light)", fg: "var(--success)" },
+    AE: { bg: "#e0f2fe", fg: "#0284c7" },
+  };
+  const c = colorMap[country] ?? { bg: "var(--bg-elevated)", fg: "var(--text-muted)" };
   return (
     <span
       className="badge"
       style={{
-        backgroundColor: country === "CN" ? "var(--warning-light)" : "var(--success-light)",
-        color: country === "CN" ? "var(--warning)" : "var(--success)",
+        backgroundColor: c.bg,
+        color: c.fg,
         fontSize: 11,
         padding: "1px 8px",
       }}

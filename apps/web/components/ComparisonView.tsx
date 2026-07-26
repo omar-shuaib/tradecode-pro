@@ -31,6 +31,17 @@ type MatchRow = {
     requiresLicence?: boolean | null;
     requiresInspection?: boolean | null;
   } | null;
+  uae?: {
+    hsCode: string;
+    descriptionEn: string;
+    descriptionLocal?: string;
+    dutyRate?: number | null;
+    secondaryRate?: number | null;
+    isRestricted?: boolean | null;
+    isProhibited?: boolean | null;
+    requiresLicence?: boolean | null;
+    requiresInspection?: boolean | null;
+  } | null;
   matchConfidence?: number;
 };
 
@@ -115,8 +126,8 @@ function SideCard({
   extra?: string;
   flags: { icon: typeof CheckCircle; label: string; tone: "good" | "warn" }[];
 }) {
-  const dutyHigh = title === "CN" ? 12 : 15;
-  const secondaryHigh = title === "CN" ? 13 : 10;
+  const dutyHigh = title === "CN" ? 12 : title === "IN" ? 15 : 10;
+  const secondaryHigh = title === "CN" ? 13 : title === "IN" ? 10 : 10;
 
   return (
     <div className="card animate-slide-up" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -125,8 +136,8 @@ function SideCard({
         <span
           className="badge"
           style={{
-            backgroundColor: title === "CN" ? "var(--warning-light)" : "var(--success-light)",
-            color: title === "CN" ? "var(--warning)" : "var(--success)",
+            backgroundColor: title === "CN" ? "var(--warning-light)" : title === "IN" ? "var(--success-light)" : "var(--info-light, #e0f2fe)",
+            color: title === "CN" ? "var(--warning)" : title === "IN" ? "var(--success)" : "#0284c7",
             fontSize: 12,
             fontWeight: 600,
           }}
@@ -167,7 +178,7 @@ function SideCard({
         {secondary != null && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 2 }}>
-              <span style={{ color: "var(--text-muted)" }}>{title === "CN" ? "VAT" : "IGST"}</span>
+              <span style={{ color: "var(--text-muted)" }}>{title === "CN" ? "VAT" : title === "IN" ? "IGST" : "VAT"}</span>
               <span
                 style={{
                   fontWeight: 600,
@@ -241,6 +252,7 @@ export function ComparisonView() {
 
   const china = row?.china ?? null;
   const india = row?.india ?? null;
+  const uae = row?.uae ?? null;
 
   const cnFlags = [
     china?.dutyRate != null && china.dutyRate >= 12
@@ -260,6 +272,16 @@ export function ComparisonView() {
     india?.requiresInspection ? { icon: AlertTriangle, label: t("compare.inspection"), tone: "warn" as const } : null,
     india?.isRestricted ? { icon: AlertTriangle, label: t("compare.restricted"), tone: "warn" as const } : null,
     india?.isProhibited ? { icon: AlertTriangle, label: t("compare.prohibited"), tone: "warn" as const } : null,
+  ].filter(Boolean) as { icon: typeof CheckCircle; label: string; tone: "good" | "warn" }[];
+
+  const aeFlags = [
+    uae?.dutyRate != null && uae.dutyRate >= 10
+      ? { icon: AlertTriangle, label: t("compare.high.mfn"), tone: "warn" as const }
+      : { icon: CheckCircle, label: t("compare.normal.mfn"), tone: "good" as const },
+    uae?.requiresLicence ? { icon: AlertTriangle, label: t("compare.licence"), tone: "warn" as const } : null,
+    uae?.requiresInspection ? { icon: AlertTriangle, label: t("compare.inspection"), tone: "warn" as const } : null,
+    uae?.isRestricted ? { icon: AlertTriangle, label: t("compare.restricted"), tone: "warn" as const } : null,
+    uae?.isProhibited ? { icon: AlertTriangle, label: t("compare.prohibited"), tone: "warn" as const } : null,
   ].filter(Boolean) as { icon: typeof CheckCircle; label: string; tone: "good" | "warn" }[];
 
   return (
@@ -344,7 +366,8 @@ export function ComparisonView() {
       </section>
 
       {loading && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }} className="compare-grid-responsive">
+        <div style={{ display: "grid", gridTemplateColumns: china && india && uae ? "repeat(3, 1fr)" : "repeat(2, 1fr)", gap: 20 }} className="compare-grid-responsive">
+          <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />
         </div>
@@ -374,7 +397,7 @@ export function ComparisonView() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
+              gridTemplateColumns: china && india && uae ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
               gap: 20,
             }}
             className="compare-grid-responsive"
@@ -411,6 +434,18 @@ export function ComparisonView() {
                   : t("compare.policy.no")
               }
               flags={inFlags.length ? inFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
+            />
+
+            <SideCard
+              title="AE"
+              country={t("compare.ae.customs")}
+              code={uae?.hsCode}
+              desc={uae?.descriptionEn}
+              sub={uae?.descriptionLocal}
+              rateLabel={t("popup.customs.duty")}
+              duty={uae?.dutyRate ?? null}
+              secondary={uae?.secondaryRate ?? null}
+              flags={aeFlags.length ? aeFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
             />
           </div>
 

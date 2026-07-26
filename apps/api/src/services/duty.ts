@@ -10,6 +10,7 @@ let cached:
 
 let localIndiaCache: any[] | null = null;
 let localChinaCache: any[] | null = null;
+let localUaeCache: any[] | null = null;
 let candidateCache: any[] | null = null;
 
 async function loadJson<T>(path: string | URL): Promise<T> {
@@ -26,6 +27,11 @@ async function localIndia() {
 async function localChina() {
   localChinaCache ??= await loadJson<any[]>(new URL("local-china-seed.json", fixtureRoot));
   return localChinaCache;
+}
+
+async function localUae() {
+  localUaeCache ??= await loadJson<any[]>(new URL("local-uae-seed.json", fixtureRoot));
+  return localUaeCache;
 }
 
 async function candidates() {
@@ -73,10 +79,46 @@ function pickChina(code: string) {
   });
 }
 
-export async function calculate(country: "CN" | "IN", hsCode: string, cif: number, landing = 0) {
+function pickUae(code: string) {
+  return localUae().then(async (rows) => {
+    const row = rows.find((item) => item.hs_code === code);
+    return row
+      ? {
+          duty: Number(row.customs_duty_rate ?? 5),
+          vat: Number(row.vat_rate ?? 5),
+        }
+      : null;
+  });
+}
+
+export async function calculate(country: "CN" | "IN" | "AE", hsCode: string, cif: number, landing = 0) {
   const fx = await rates();
-  const target = country === "IN" ? "INR" : "CNY";
-  const rate = fx[target] ?? { rate: 1, date: "unknown" };
+  const target = country === "IN" ? "INR" : country === "AE" ? "AED" : "CNY";
+  const rate = fx[target] ?? { rate: country === "AE" ? 3.6725 : 1, date: "unknown" };
+
+  if (country === "AE") {
+    const row = await db.uaeHsCode.findUnique({ where: { hsCode } }).catch(() => null);
+    const fallback = await pickUae(hsCode);
+    const dutyRate = Number(row?.customsDutyRate ?? fallback?.duty ?? 5);
+    const vatRate = Number(row?.vatRate ?? fallback?.vat ?? 5);
+    const customDuty = cif * (dutyRate / 100);
+    const vat = (cif + customDuty) * (vatRate / 100);
+    const totalDuty = customDuty + vat;
+    return {
+      country,
+      currency: target,
+      exchangeRate: rate.rate,
+      effectiveDate: rate.date,
+      lines: [
+        { label: "CIF", amount: cif },
+        { label: "Customs Duty", amount: customDuty },
+        { label: "VAT base", amount: cif + customDuty },
+        { label: "VAT", amount: vat },
+      ],
+      totalDuty,
+      landedCost: cif + totalDuty,
+    };
+  }
 
   if (country === "IN") {
     const row = await db.indiaHsCode.findUnique({ where: { hsCode } }).catch(() => null);

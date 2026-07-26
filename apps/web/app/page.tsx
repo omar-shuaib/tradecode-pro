@@ -169,8 +169,8 @@ export default function Home() {
         }}
       >
         {[
-          { value: "25,000+", labelKey: "home.stat.codes" as const },
-          { value: "2", labelKey: "home.stat.countries" as const },
+          { value: "35,000+", labelKey: "home.stat.codes" as const },
+          { value: "3", labelKey: "home.stat.countries" as const },
           { value: "Free & open", labelKey: "" as const },
         ].map(({ value, labelKey }) => (
           <div key={value} style={{ textAlign: "center" }}>

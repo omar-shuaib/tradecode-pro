@@ -1,4 +1,32 @@
-import type { CodeResult,Country } from "@tradecode/shared-types"; import { db } from "../../db.js"; import type { SearchProvider } from "./provider.js";
-export class PostgresSearchProvider implements SearchProvider{async search(q:string,country:Country,limit=20){const like=`%${q}%`;const rows=await db.$queryRawUnsafe<any[]>(`SELECT * FROM (
-SELECT 'CN' country,hs_code_8 "hsCode",description_en "descriptionEn",description_zh "descriptionLocal",chapter,mfn_duty_rate::float "dutyRate",vat_rate::float "secondaryRate",requires_licence "requiresLicence",ciq_inspection "requiresInspection",is_restricted "isRestricted",is_prohibited "isProhibited",NULL::text "importPolicy",NULL::text "inspectionAgency",supervisory_conditions "supervisoryConditions",data_source "dataSource",last_updated::text "lastUpdated",similarity(description_en,$1) score FROM hs_codes_china
-UNION ALL SELECT 'IN',hs_code,description_en,description_hi,chapter,bcd_rate::float,igst_rate::float,requires_licence,requires_inspection,is_restricted,is_prohibited,import_policy,inspection_agency,NULL,data_source,last_updated::text,similarity(description_en,$1) FROM hs_codes_india) s WHERE ($2='BOTH' OR country=$2) AND ("hsCode" LIKE $3 OR "descriptionEn" ILIKE $3 OR score>.18) ORDER BY score DESC LIMIT $4`,q,country,like,limit);return rows as CodeResult[]}}
+import type { CodeResult, Country } from "@tradecode/shared-types";
+import { db } from "../../db.js";
+import type { SearchProvider } from "./provider.js";
+
+export class PostgresSearchProvider implements SearchProvider {
+  async search(q: string, country: Country, limit = 20) {
+    const like = `%${q}%`;
+    const rows = await db.$queryRawUnsafe<any[]>(
+      `SELECT * FROM (
+        SELECT 'CN' country, hs_code_8 "hsCode", description_en "descriptionEn", description_zh "descriptionLocal", chapter,
+          mfn_duty_rate::float "dutyRate", vat_rate::float "secondaryRate", requires_licence "requiresLicence",
+          ciq_inspection "requiresInspection", is_restricted "isRestricted", is_prohibited "isProhibited",
+          NULL::text "importPolicy", NULL::text "inspectionAgency", supervisory_conditions "supervisoryConditions",
+          data_source "dataSource", last_updated::text "lastUpdated", similarity(description_en, $1) score
+        FROM hs_codes_china
+        UNION ALL
+        SELECT 'IN', hs_code, description_en, description_hi, chapter, bcd_rate::float, igst_rate::float,
+          requires_licence, requires_inspection, is_restricted, is_prohibited, import_policy, inspection_agency,
+          NULL, data_source, last_updated::text, similarity(description_en, $1)
+        FROM hs_codes_india
+        UNION ALL
+        SELECT 'AE', hs_code, description_en, description_ar, chapter, customs_duty_rate::float, vat_rate::float,
+          FALSE, FALSE, is_restricted, is_prohibited, NULL, NULL, NULL, data_source, last_updated::text,
+          similarity(description_en, $1)
+        FROM hs_codes_uae
+      ) s WHERE ($2 = 'BOTH' OR country = $2) AND ("hsCode" LIKE $3 OR "descriptionEn" ILIKE $3 OR score > .18)
+      ORDER BY score DESC LIMIT $4`,
+      q, country, like, limit
+    );
+    return rows as CodeResult[];
+  }
+}

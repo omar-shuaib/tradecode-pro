@@ -27,6 +27,7 @@ type CountrySide = {
 type MatchRow = {
   china: CountrySide | null;
   india: CountrySide | null;
+  uae: CountrySide | null;
 };
 
 type DutyLine = { label: string; amount: number };
@@ -94,7 +95,7 @@ function FlagChip({ label, tone }: { label: string; tone: "good" | "warn" | "bad
 
 function Panel({ side, t }: { side: CountrySide; t: (key: any, params?: Record<string, string | number>) => string }) {
   const sideLabel =
-    side.country === "CN" ? t("popup.cn.customs") : t("popup.in.customs");
+    side.country === "CN" ? t("popup.cn.customs") : side.country === "IN" ? t("popup.in.customs") : t("popup.ae.customs");
   const totalIncidence =
     side.dutyRate != null && side.secondaryRate != null
       ? (Number(side.dutyRate) + Number(side.secondaryRate)).toFixed(1)
@@ -114,13 +115,13 @@ function Panel({ side, t }: { side: CountrySide; t: (key: any, params?: Record<s
   if (side.supervisoryConditions)
     flags.push({ label: `${t("popup.supervisory")}: ${side.supervisoryConditions}`, tone: "warn" });
 
-  const dutyHigh = side.country === "CN" ? 12 : 15;
-  const secondaryHigh = side.country === "CN" ? 13 : 10;
+  const dutyHigh = side.country === "CN" ? 12 : side.country === "IN" ? 15 : 10;
+  const secondaryHigh = side.country === "CN" ? 13 : side.country === "IN" ? 10 : 10;
 
   if (side.dutyRate != null && side.dutyRate >= dutyHigh)
-    flags.push({ label: side.country === "CN" ? t("popup.high.mfn") : t("popup.high.bcd"), tone: "warn" });
+    flags.push({ label: side.country === "CN" ? t("popup.high.mfn") : side.country === "IN" ? t("popup.high.bcd") : t("popup.high.mfn"), tone: "warn" });
   if (side.secondaryRate != null && side.secondaryRate >= secondaryHigh)
-    flags.push({ label: side.country === "CN" ? t("popup.high.vat") : t("popup.high.igst"), tone: "warn" });
+    flags.push({ label: side.country === "CN" ? t("popup.high.vat") : side.country === "IN" ? t("popup.high.igst") : t("popup.high.vat"), tone: "warn" });
 
   if (flags.length === 0)
     flags.push({ label: t("popup.no.flags"), tone: "good" });
@@ -151,7 +152,7 @@ function Panel({ side, t }: { side: CountrySide; t: (key: any, params?: Record<s
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 2 }}>
             <span style={{ color: "var(--text-muted)" }}>
-              {side.country === "CN" ? t("popup.mfn") : t("popup.bcd")}
+              {side.country === "CN" ? t("popup.mfn") : side.country === "IN" ? t("popup.bcd") : t("popup.customs.duty")}
             </span>
             <span
               style={{
@@ -170,7 +171,7 @@ function Panel({ side, t }: { side: CountrySide; t: (key: any, params?: Record<s
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 2 }}>
             <span style={{ color: "var(--text-muted)" }}>
-              {side.country === "CN" ? t("popup.vat") : t("popup.sws")}
+              {side.country === "CN" ? t("popup.vat") : side.country === "IN" ? t("popup.sws") : t("popup.vat")}
             </span>
             <span
               style={{
@@ -267,6 +268,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
 
   const china = match?.china ?? null;
   const india = match?.india ?? null;
+  const uae = match?.uae ?? null;
 
   const indiaDuty = useMemo(() => {
     if (!dutyResult) return null;
@@ -394,11 +396,11 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
     );
   }
 
-  if (!china && !india) return null;
+  if (!china && !india && !uae) return null;
 
-  const title = china?.hsCode ?? india?.hsCode ?? code;
-  const subtitle = china?.descriptionEn ?? india?.descriptionEn ?? "";
-  const localTitle = china?.descriptionLocal ?? india?.descriptionLocal ?? "";
+  const title = china?.hsCode ?? india?.hsCode ?? uae?.hsCode ?? code;
+  const subtitle = china?.descriptionEn ?? india?.descriptionEn ?? uae?.descriptionEn ?? "";
+  const localTitle = china?.descriptionLocal ?? india?.descriptionLocal ?? uae?.descriptionLocal ?? "";
   const totalIncidence = indiaDuty?.length
     ? indiaDuty.reduce((sum, line) => sum + line.amount, 0)
     : null;
@@ -473,7 +475,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
+            gridTemplateColumns: china && india && uae ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
             gap: 20,
             padding: 20,
           }}
@@ -496,6 +498,16 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
               <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
               <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
                 {t("popup.no.india")}
+              </p>
+            </div>
+          )}
+          {uae ? (
+            <Panel side={uae} t={t} />
+          ) : (
+            <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
+              <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
+              <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
+                {t("popup.no.uae")}
               </p>
             </div>
           )}
@@ -608,10 +620,117 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
           </div>
         )}
 
+        {uae && (
+          <div style={{ padding: "0 20px 20px" }}>
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <Calculator style={{ width: 18, height: 18, color: "var(--accent)" }} />
+                <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
+                  {t("popup.calculator")} — UAE
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 200px" }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{t("popup.cif")}</span>
+                  <input
+                    className="input"
+                    type="number"
+                    value={cif}
+                    onChange={(e) => setCif(Number(e.target.value))}
+                    style={{ height: 40 }}
+                  />
+                </label>
+                <button className="btn-secondary" type="button" onClick={() => setCif(10000)} style={{ height: 40 }}>
+                  {t("popup.reset")}
+                </button>
+              </div>
+
+              {dutyResult ? (
+                <div style={{ marginTop: 16 }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 16,
+                    }}
+                    className="detail-split-responsive"
+                  >
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                        {t("popup.uae.breakdown")}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                        {indiaDuty?.map((line, i) => (
+                          <div
+                            key={line.label}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              padding: "8px 0",
+                              borderBottom: i < (indiaDuty?.length ?? 0) - 1 ? "1px solid var(--border)" : "none",
+                              fontSize: 13,
+                            }}
+                          >
+                            <span style={{ color: "var(--text-secondary)" }}>{line.label}</span>
+                            <span style={{ fontWeight: 600, fontFamily: "monospace", color: "var(--text)" }}>
+                              ${line.amount.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: "10px 14px",
+                          borderRadius: "var(--radius-sm)",
+                          backgroundColor: "var(--accent-light)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>{t("popup.landed.cost")}</span>
+                        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "var(--accent)" }}>
+                          {Number(dutyResult.landedCost).toFixed(2)} USD
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, justifyContent: "center" }}>
+                      {totalIncidence != null && (
+                        <div
+                          style={{
+                            padding: "12px 16px",
+                            borderRadius: "var(--radius-sm)",
+                            backgroundColor: "var(--bg-elevated)",
+                            textAlign: "center",
+                          }}
+                        >
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{t("popup.total")}</div>
+                          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>
+                            ~{totalIncidence.toFixed(1)}%
+                          </div>
+                        </div>
+                      )}
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                        {t("popup.fx", { rate: dutyResult.exchangeRate, currency: dutyResult.currency, date: dutyResult.effectiveDate })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
+                  {t("popup.duty.note")}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
+            gridTemplateColumns: china && india && uae ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
             gap: 16,
             padding: "0 20px 20px",
           }}
@@ -619,6 +738,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
         >
           {china && <CompliancePanel code={china as any} />}
           {india && <CompliancePanel code={india as any} />}
+          {uae && <CompliancePanel code={uae as any} />}
         </div>
 
         <div style={{ padding: "0 20px 20px" }}>

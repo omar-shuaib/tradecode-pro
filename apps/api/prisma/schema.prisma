@@ -52,6 +52,22 @@ model IndiaHsCode {
   @@map("hs_codes_india")
 }
 
+model UaeHsCode {
+  hsCode             String             @id @map("hs_code") @db.VarChar(8)
+  chapter            String             @db.VarChar(2)
+  descriptionEn      String             @map("description_en")
+  descriptionAr      String?            @map("description_ar")
+  customsDutyRate    Decimal            @map("customs_duty_rate") @db.Decimal(6, 2)
+  vatRate            Decimal            @map("vat_rate") @db.Decimal(6, 2)
+  exciseRate         Decimal?           @map("excise_rate") @db.Decimal(6, 2)
+  isRestricted       Boolean            @default(false) @map("is_restricted")
+  isProhibited       Boolean            @default(false) @map("is_prohibited")
+  dataSource         String?            @map("data_source")
+  lastUpdated        DateTime           @default(now()) @map("last_updated")
+
+  @@map("hs_codes_uae")
+}
+
 model BilateralMapping {
   id              Int         @id @default(autoincrement())
   chinaHsCode8    String      @map("china_hs_code_8")

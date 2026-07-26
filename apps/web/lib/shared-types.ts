@@ -3,11 +3,11 @@ import { z } from "zod";
 export const DUTY_DISCLAIMER_TEXT =
   "Duty rates and import policies shown are for reference only, based on the latest available published schedule. They do not constitute legal or customs advice. Rates may have changed. Always verify with a licensed customs broker or the official customs authority of the relevant country before making commercial or compliance decisions.";
 
-export const CountrySchema = z.enum(["CN", "IN", "BOTH"]);
+export const CountrySchema = z.enum(["CN", "IN", "AE", "BOTH"]);
 export type Country = z.infer<typeof CountrySchema>;
 
 export const CodeSchema = z.object({
-  country: z.enum(["CN", "IN"]),
+  country: z.enum(["CN", "IN", "AE"]),
   hsCode: z.string(),
   descriptionEn: z.string(),
   descriptionLocal: z.string().nullable(),
@@ -33,7 +33,7 @@ export const SearchResponseSchema = z.object({
 export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 
 export const DutyRequestSchema = z.object({
-  country: z.enum(["CN", "IN"]),
+  country: z.enum(["CN", "IN", "AE"]),
   hsCode: z.string(),
   cifUsd: z.number().nonnegative(),
   landingChargesUsd: z.number().nonnegative().default(0),
@@ -41,7 +41,7 @@ export const DutyRequestSchema = z.object({
 export type DutyRequest = z.infer<typeof DutyRequestSchema>;
 
 export const DutyResponseSchema = z.object({
-  country: z.enum(["CN", "IN"]),
+  country: z.enum(["CN", "IN", "AE"]),
   currency: z.string(),
   exchangeRate: z.number(),
   effectiveDate: z.string(),

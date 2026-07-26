@@ -56,6 +56,20 @@ type LocalChinaRow = {
   last_updated?: string | null;
 };
 
+type LocalUaeRow = {
+  hs_code: string;
+  chapter: string;
+  description_en: string;
+  description_ar?: string | null;
+  customs_duty_rate?: number | null;
+  vat_rate?: number | null;
+  excise_rate?: number | null;
+  is_restricted?: boolean | null;
+  is_prohibited?: boolean | null;
+  data_source?: string | null;
+  last_updated?: string | null;
+};
+
 type CandidateRow = {
   country: "CN" | "IN";
   hs_code?: string;
@@ -84,10 +98,12 @@ app.use(
 
 const localIndiaPath = new URL("../../../data/fixtures/local-india-seed.json", import.meta.url);
 const localChinaPath = new URL("../../../data/fixtures/local-china-seed.json", import.meta.url);
+const localUaePath = new URL("../../../data/fixtures/local-uae-seed.json", import.meta.url);
 const candidatePath = new URL("../../../data/fixtures/unverified-candidates.json", import.meta.url);
 
 let localIndiaCache: LocalIndiaRow[] | null = null;
 let localChinaCache: LocalChinaRow[] | null = null;
+let localUaeCache: LocalUaeRow[] | null = null;
 let candidateCache: CandidateRow[] | null = null;
 
 async function loadJson<T>(url: URL): Promise<T> {
@@ -108,6 +124,14 @@ async function localChina(): Promise<LocalChinaRow[]> {
     localChinaCache = await db.$queryRaw<LocalChinaRow[]>`SELECT hs_code_8, hs_code, hs_code_10, chapter, section, description_en, description_zh, mfn_duty_rate, vat_rate, requires_licence, ciq_inspection, is_restricted, is_prohibited, supervisory_conditions, data_source, last_updated::text FROM hs_codes_china`;
   }
   return localChinaCache;
+}
+
+async function localUae(): Promise<LocalUaeRow[]> {
+  localUaeCache ??= await loadJson<LocalUaeRow[]>(localUaePath).catch(() => [] as LocalUaeRow[]);
+  if (localUaeCache.length === 0) {
+    localUaeCache = await db.$queryRaw<LocalUaeRow[]>`SELECT hs_code, chapter, description_en, description_ar, customs_duty_rate, vat_rate, excise_rate, is_restricted, is_prohibited, data_source, last_updated::text FROM hs_codes_uae`;
+  }
+  return localUaeCache;
 }
 
 async function candidates() {
@@ -189,14 +213,42 @@ async function getChinaCode(code: string) {
   return row ? toSearchResult(mergeChinaRates(row), "CN") : null;
 }
 
-async function fallbackSearch(q: string, country: "CN" | "IN" | "BOTH", limit: number) {
+function toSearchResultUae(row: LocalUaeRow) {
+  return {
+    country: "AE" as const,
+    hsCode: row.hs_code,
+    descriptionEn: row.description_en,
+    descriptionLocal: row.description_ar ?? "",
+    chapter: row.chapter ?? "",
+    dutyRate: row.customs_duty_rate ?? null,
+    secondaryRate: row.vat_rate ?? null,
+    requiresLicence: false,
+    requiresInspection: false,
+    isRestricted: row.is_restricted ?? false,
+    isProhibited: row.is_prohibited ?? false,
+    importPolicy: "",
+    inspectionAgency: "",
+    supervisoryConditions: row.excise_rate != null ? `Excise: ${row.excise_rate}%` : "",
+    dataSource: row.data_source ?? "GCC Common External Tariff",
+    lastUpdated: row.last_updated ?? "",
+  };
+}
+
+async function getUaeCode(code: string) {
+  const row = (await localUae()).find((item) => item.hs_code === code);
+  return row ? toSearchResultUae(row) : null;
+}
+
+async function fallbackSearch(q: string, country: "CN" | "IN" | "AE" | "BOTH", limit: number) {
   const needle = q.toLowerCase();
   const indiaRows = await localIndia();
   const chinaRows = await localChina();
+  const uaeRows = await localUae();
 
   const rows = [
     ...indiaRows.map((row) => toSearchResult(mergeIndiaRates(row), "IN")),
     ...chinaRows.map((row) => toSearchResult(mergeChinaRates(row), "CN")),
+    ...uaeRows.map((row) => toSearchResultUae(row)),
   ]
     .filter((row) => country === "BOTH" || row.country === country)
     .filter((row) => {
@@ -238,17 +290,19 @@ function scoreMatch(query: string, candidate: string) {
   return (overlap * 0.5 + partialHits * 0.3 + exactHit) / qTokens.length;
 }
 
-async function fallbackClassify(description: string, country: "CN" | "IN" | "BOTH", limit: number) {
+async function fallbackClassify(description: string, country: "CN" | "IN" | "AE" | "BOTH", limit: number) {
   const normalized = description.trim();
   const hasMeaningfulToken = tokenize(normalized).length >= 2;
   if (!hasMeaningfulToken) return [];
 
   const indiaRows = await localIndia();
   const chinaRows = await localChina();
+  const uaeRows = await localUae();
 
   const allRows = [
     ...indiaRows.map((row) => toSearchResult(mergeIndiaRates(row), "IN")),
     ...chinaRows.map((row) => toSearchResult(mergeChinaRates(row), "CN")),
+    ...uaeRows.map((row) => toSearchResultUae(row)),
   ].filter((row) => country === "BOTH" || row.country === country);
 
   const scored = allRows
@@ -288,8 +342,34 @@ app.get("/api/v1/autocomplete", async (req, res) => {
 });
 
 app.get("/api/v1/code/:country/:code", async (req, res) => {
-  const country = req.params.country === "CN" ? "CN" : "IN";
+  const country = req.params.country === "CN" ? "CN" : req.params.country === "AE" ? "AE" : "IN";
   const code = req.params.code;
+
+  if (country === "AE") {
+    const dbRow = await db.uaeHsCode.findUnique({ where: { hsCode: code } }).catch(() => null);
+    if (dbRow) {
+      return res.json({
+        country: "AE",
+        hsCode: dbRow.hsCode,
+        descriptionEn: dbRow.descriptionEn,
+        descriptionLocal: dbRow.descriptionAr ?? "",
+        chapter: dbRow.chapter,
+        dutyRate: Number(dbRow.customsDutyRate),
+        secondaryRate: Number(dbRow.vatRate),
+        requiresLicence: false,
+        requiresInspection: false,
+        isRestricted: dbRow.isRestricted,
+        isProhibited: dbRow.isProhibited,
+        importPolicy: "",
+        inspectionAgency: "",
+        supervisoryConditions: dbRow.exciseRate != null ? `Excise: ${dbRow.exciseRate}%` : "",
+        dataSource: dbRow.dataSource ?? "database",
+        lastUpdated: dbRow.lastUpdated?.toISOString() ?? "",
+      });
+    }
+    const row = await getUaeCode(code);
+    return res.json(row);
+  }
 
   if (country === "CN") {
     const dbRow = await db.chinaHsCode.findUnique({ where: { hsCode8: code } }).catch(() => null);
@@ -343,7 +423,15 @@ app.get("/api/v1/code/:country/:code", async (req, res) => {
 });
 
 app.get("/api/v1/chapters/:country", async (req, res) => {
-  const rows = req.params.country === "CN" ? await localChina() : await localIndia();
+  const countryParam = req.params.country;
+  let rows: any[];
+  if (countryParam === "AE") {
+    rows = await localUae();
+  } else if (countryParam === "CN") {
+    rows = await localChina();
+  } else {
+    rows = await localIndia();
+  }
   const chapters = [...new Set(rows.map((row: any) => String(row.chapter ?? "").padStart(2, "0")))]
     .filter(Boolean)
     .sort();
@@ -351,7 +439,15 @@ app.get("/api/v1/chapters/:country", async (req, res) => {
 });
 
 app.get("/api/v1/sections/:country", async (req, res) => {
-  const rows = req.params.country === "CN" ? await localChina() : await localIndia();
+  const countryParam = req.params.country;
+  let rows: any[];
+  if (countryParam === "AE") {
+    rows = await localUae();
+  } else if (countryParam === "CN") {
+    rows = await localChina();
+  } else {
+    rows = await localIndia();
+  }
   const sections = [...new Set(rows.map((row: any) => row.section).filter(Boolean))].sort();
   res.json(sections);
 });
@@ -361,6 +457,7 @@ app.get("/api/v1/match/:code", async (req, res) => {
 
   const cnRow = await db.chinaHsCode.findUnique({ where: { hsCode8: code } }).catch(() => null);
   const inRow = await db.indiaHsCode.findUnique({ where: { hsCode: code } }).catch(() => null);
+  const aeRow = await db.uaeHsCode.findUnique({ where: { hsCode: code } }).catch(() => null);
 
   const china = cnRow
     ? {
@@ -402,12 +499,32 @@ app.get("/api/v1/match/:code", async (req, res) => {
       }
     : (await getIndiaCode(code));
 
-  if (!china && !india) {
+  const uae = aeRow
+    ? {
+        country: "AE" as const,
+        hsCode: aeRow.hsCode,
+        descriptionEn: aeRow.descriptionEn,
+        descriptionLocal: aeRow.descriptionAr ?? "",
+        dutyRate: Number(aeRow.customsDutyRate),
+        secondaryRate: Number(aeRow.vatRate),
+        requiresLicence: false,
+        requiresInspection: false,
+        isRestricted: aeRow.isRestricted,
+        isProhibited: aeRow.isProhibited,
+        importPolicy: "",
+        inspectionAgency: "",
+        supervisoryConditions: aeRow.exciseRate != null ? `Excise: ${aeRow.exciseRate}%` : "",
+        dataSource: aeRow.dataSource ?? "database",
+        lastUpdated: aeRow.lastUpdated?.toISOString() ?? "",
+      }
+    : (await getUaeCode(code));
+
+  if (!china && !india && !uae) {
     return res.json([]);
   }
 
-  const confidence = china && india ? 0.95 : china || india ? 0.6 : 0;
-  res.json([{ id: 1, matchConfidence: confidence, matchMethod: china && india ? "exact-bilateral" : "single-country", china, india }]);
+  const confidence = china && india ? 0.95 : china || india || uae ? 0.6 : 0;
+  res.json([{ id: 1, matchConfidence: confidence, matchMethod: china && india ? "exact-bilateral" : "single-country", china, india, uae }]);
 });
 
 app.post("/api/v1/duty-calculate", async (req, res) => {
@@ -442,6 +559,28 @@ app.post("/api/v1/duty-calculate", async (req, res) => {
         ],
         totalDuty: total,
         landedCost: av + total,
+      });
+    }
+    if (payload.country === "AE") {
+      const row = await getUaeCode(payload.hsCode);
+      if (!row) throw new Error("No UAE duty data for this code yet");
+      const cif = payload.cifUsd;
+      const customDuty = cif * (Number(row.dutyRate ?? 5) / 100);
+      const vat = (cif + customDuty) * (Number(row.secondaryRate ?? 5) / 100);
+      const total = customDuty + vat;
+      return res.json({
+        country: "AE",
+        currency: "AED",
+        exchangeRate: 3.6725,
+        effectiveDate: "local-demo",
+        lines: [
+          { label: "CIF", amount: cif },
+          { label: "Customs Duty", amount: customDuty },
+          { label: "VAT base", amount: cif + customDuty },
+          { label: "VAT", amount: vat },
+        ],
+        totalDuty: total,
+        landedCost: cif + total,
       });
     }
     throw new Error("No duty data available");

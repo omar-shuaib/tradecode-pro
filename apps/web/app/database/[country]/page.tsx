@@ -9,7 +9,7 @@ import { useTranslation } from "../../../lib/i18n";
 import { cn } from "../../../lib/utils";
 import { CodePopup } from "../../../components/CodePopup";
 
-type Props = { params: Promise<{ country: "CN" | "IN" }> };
+type Props = { params: Promise<{ country: "CN" | "IN" | "AE" }> };
 
 function dutyVariant(rate?: number | null): "success" | "warning" | "error" {
   if (rate == null) return "success";
@@ -43,7 +43,7 @@ function SkeletonCard() {
 export default function DatabasePage({ params }: Props) {
   const router = useRouter();
   const { t } = useTranslation();
-  const [country, setCountry] = useState<"CN" | "IN">("CN");
+  const [country, setCountry] = useState<"CN" | "IN" | "AE">("CN");
   const [rows, setRows] = useState<CodeResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [chapter, setChapter] = useState("All");
@@ -106,7 +106,7 @@ export default function DatabasePage({ params }: Props) {
                 {t("db.label")}
               </p>
               <h1 className="text-3xl font-bold" style={{ color: "var(--text)" }}>
-                {t("db.explorer", { country: country === "CN" ? t("common.china") : t("common.india") })}
+                {t("db.explorer", { country: country === "CN" ? t("common.china") : country === "IN" ? t("common.india") : t("common.uae") })}
               </h1>
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 {t("db.desc")}
@@ -134,6 +134,17 @@ export default function DatabasePage({ params }: Props) {
                 }}
               >
                 IN
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/database/AE")}
+                className={cn("px-4 py-1.5 rounded-md text-sm font-medium transition-all", country === "AE" ? "shadow-sm" : "")}
+                style={{
+                  background: country === "AE" ? "var(--accent)" : "transparent",
+                  color: country === "AE" ? "var(--accent-text)" : "var(--text-secondary)",
+                }}
+              >
+                AE
               </button>
             </div>
           </div>
