@@ -9,6 +9,7 @@ import {
   CountrySchema,
   DutyRequestSchema,
   ErrorLogSchema,
+  getChapterList,
 } from "@tradecode/shared-types";
 import { db } from "./db.js";
 import { calculate } from "./services/duty.js";
@@ -514,6 +515,7 @@ app.get("/api/v1/browse/:country", async (req, res) => {
     }
 
     const allChapters = [...new Set(rows.map((r: any) => String(r.chapter ?? "").padStart(2, "0")))].filter(Boolean).sort();
+    const chaptersWithNames = getChapterList(allChapters);
 
     let mapped = rows.map(mapRow);
 
@@ -552,7 +554,7 @@ app.get("/api/v1/browse/:country", async (req, res) => {
     const start = (page - 1) * limit;
     const results = mapped.slice(start, start + limit);
 
-    res.json({ results, total, page, limit, chapters: allChapters });
+    res.json({ results, total, page, limit, chapters: chaptersWithNames });
   } catch (err: any) {
     console.error("browse error:", err);
     res.status(500).json({ error: err?.message ?? "Browse failed" });

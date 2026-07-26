@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { CodeResult } from "../../../lib/shared-types";
 import { Search, X, Database, AlertTriangle, ChevronRight, ChevronLeft, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { api, type BrowseResponse } from "../../../lib/api";
+import { api, type BrowseResponse, type ChapterInfo } from "../../../lib/api";
 import { useTranslation } from "../../../lib/i18n";
 import { cn } from "../../../lib/utils";
 import { CodePopup } from "../../../components/CodePopup";
@@ -48,7 +48,7 @@ export default function DatabasePage({ params }: Props) {
   const [rows, setRows] = useState<CodeResult[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [chapters, setChapters] = useState<string[]>([]);
+  const [chapters, setChapters] = useState<ChapterInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [chapter, setChapter] = useState("");
@@ -260,20 +260,20 @@ export default function DatabasePage({ params }: Props) {
               </button>
               {chapters.map((ch) => (
                 <button
-                  key={ch}
+                  key={ch.code}
                   type="button"
-                  onClick={() => handleChapterChange(ch)}
+                  onClick={() => handleChapterChange(ch.code)}
                   className={cn(
                     "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                    chapter === ch ? "shadow-sm" : "hover:opacity-80"
+                    chapter === ch.code ? "shadow-sm" : "hover:opacity-80"
                   )}
                   style={{
-                    background: chapter === ch ? "var(--accent)" : "var(--bg-elevated)",
-                    color: chapter === ch ? "var(--accent-text)" : "var(--text-secondary)",
-                    border: `1px solid ${chapter === ch ? "var(--accent)" : "var(--border)"}`,
+                    background: chapter === ch.code ? "var(--accent)" : "var(--bg-elevated)",
+                    color: chapter === ch.code ? "var(--accent-text)" : "var(--text-secondary)",
+                    border: `1px solid ${chapter === ch.code ? "var(--accent)" : "var(--border)"}`,
                   }}
                 >
-                  {ch}
+                  {ch.code} — {ch.name}
                 </button>
               ))}
             </div>
