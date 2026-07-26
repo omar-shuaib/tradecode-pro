@@ -15,6 +15,7 @@ import { db } from "./db.js";
 import { calculate } from "./services/duty.js";
 import { createSearchProvider } from "./services/search/index.js";
 import { classify } from "./services/gemini.js";
+import { detectProductCategories } from "./product-categories.js";
 
 // TODO: monitoring-v2 - adopt Sentry and Grafana Cloud when traffic justifies it.
 
@@ -280,20 +281,20 @@ function tokenize(text: string) {
     .filter((token) => token.length >= 2);
 }
 
-/**
- * Score how well a query matches a candidate HS code description.
- * Returns 0-1 confidence score.
- *
- * Scoring tiers:
- *   1. Exact phrase match in description         → 0.95-1.0
- *   2. ALL query words appear (in order)         → 0.80-0.95
- *   3. ALL query words appear (unordered)        → 0.65-0.80
- *   4. Most (>=60%) words appear                 → 0.40-0.65
- *   5. Some words appear                         → 0.15-0.40
- *   6. Partial/stem matches only                 → 0.05-0.15
- *   7. No match                                 → 0
- */
-function scoreMatch(query: string, candidate: string): number {
+/* ── Scoring with chapter intelligence ─────────────────────────── */
+
+function chapterMultiplier(queryChapters: string[], codeChapter: string): number {
+  if (queryChapters.length === 0) return 1.0;
+  if (queryChapters.includes(codeChapter)) return 1.5;
+  return 0.15;
+}
+
+function scoreMatch(
+  query: string,
+  candidate: string,
+  codeChapter?: string,
+  queryChapters?: string[],
+): number {
   const qTokens = tokenize(query);
   const cTokens = tokenize(candidate);
   if (!qTokens.length || !cTokens.length) return 0;
@@ -302,31 +303,30 @@ function scoreMatch(query: string, candidate: string): number {
   const qLower = query.toLowerCase().trim();
   const candidateSet = new Set(cTokens);
 
+  const chapterBoost = (queryChapters && codeChapter)
+    ? chapterMultiplier(queryChapters, codeChapter)
+    : 1.0;
+
   // Exact phrase match
   if (cLower.includes(qLower)) {
-    // Bonus: check if query words appear in order
-    const qWords = qTokens;
     let lastIdx = -1;
     let inOrder = true;
-    for (const w of qWords) {
+    for (const w of qTokens) {
       const idx = cLower.indexOf(w, lastIdx + 1);
       if (idx === -1) { inOrder = false; break; }
       lastIdx = idx;
     }
-    return inOrder ? 1.0 : 0.95;
+    return Math.min(1.0, (inOrder ? 1.0 : 0.95) * chapterBoost);
   }
 
-  // Exact token overlap
   const exactOverlap = qTokens.filter((t) => candidateSet.has(t)).length;
   const exactCoverage = exactOverlap / qTokens.length;
 
-  // Partial/stem overlap (one token contains the other)
   const partialOverlap = qTokens.filter((t) =>
     cTokens.some((ct) => ct.includes(t) || t.includes(ct))
   ).length;
   const partialCoverage = partialOverlap / qTokens.length;
 
-  // Word order bonus: check if query words appear in order in candidate
   let orderBonus = 0;
   {
     let lastIdx = -1;
@@ -338,40 +338,25 @@ function scoreMatch(query: string, candidate: string): number {
     orderBonus = (inOrderCount / qTokens.length) * 0.1;
   }
 
-  // Tier 2: All words present
+  let rawScore = 0;
   if (exactCoverage === 1) {
-    return Math.min(0.95, 0.80 + exactCoverage * 0.15 + orderBonus);
-  }
-
-  // Tier 3: All partial matches
-  if (partialCoverage === 1) {
-    return Math.min(0.85, 0.65 + partialCoverage * 0.2 + orderBonus);
-  }
-
-  // Tier 4: Most words present (>=60%)
-  if (exactCoverage >= 0.6 || partialCoverage >= 0.6) {
+    rawScore = Math.min(0.95, 0.80 + exactCoverage * 0.15 + orderBonus);
+  } else if (partialCoverage === 1) {
+    rawScore = Math.min(0.85, 0.65 + partialCoverage * 0.2 + orderBonus);
+  } else if (exactCoverage >= 0.6 || partialCoverage >= 0.6) {
     const best = Math.max(exactCoverage, partialCoverage);
-    return Math.min(0.75, 0.40 + best * 0.35 + orderBonus);
-  }
-
-  // Tier 5: Some words present
-  if (exactCoverage >= 0.3 || partialCoverage >= 0.3) {
+    rawScore = Math.min(0.75, 0.40 + best * 0.35 + orderBonus);
+  } else if (exactCoverage >= 0.3 || partialCoverage >= 0.3) {
     const best = Math.max(exactCoverage, partialCoverage);
-    return Math.min(0.55, 0.15 + best * 0.4 + orderBonus);
-  }
-
-  // Tier 6: Minimal partial matches
-  if (exactCoverage > 0 || partialCoverage > 0) {
+    rawScore = Math.min(0.55, 0.15 + best * 0.4 + orderBonus);
+  } else if (exactCoverage > 0 || partialCoverage > 0) {
     const best = Math.max(exactCoverage, partialCoverage);
-    return Math.min(0.30, 0.05 + best * 0.25);
+    rawScore = Math.min(0.30, 0.05 + best * 0.25);
   }
 
-  return 0;
+  return Math.min(1.0, rawScore * chapterBoost);
 }
 
-/**
- * Round confidence to a display-friendly percentage (0-100).
- */
 function confidencePercent(score: number): number {
   return Math.round(Math.min(100, Math.max(0, score * 100)));
 }
@@ -381,37 +366,38 @@ async function fallbackClassify(description: string, country: "CN" | "IN" | "AE"
   const hasMeaningfulToken = tokenize(normalized).length >= 2;
   if (!hasMeaningfulToken) return [];
 
+  const targetChapters = detectProductCategories(normalized);
+
   const indiaRows = await localIndia();
   const chinaRows = await localChina();
   const uaeRows = await localUae();
 
   const allRows = [
-    ...indiaRows.map((row) => toSearchResult(mergeIndiaRates(row), "IN")),
-    ...chinaRows.map((row) => toSearchResult(mergeChinaRates(row), "CN")),
-    ...uaeRows.map((row) => toSearchResultUae(row)),
+    ...indiaRows.map((row) => ({ ...toSearchResult(mergeIndiaRates(row), "IN"), chapter: String(row.chapter ?? "").padStart(2, "0") })),
+    ...chinaRows.map((row) => ({ ...toSearchResult(mergeChinaRates(row), "CN"), chapter: String(row.chapter ?? "").padStart(2, "0") })),
+    ...uaeRows.map((row) => ({ ...toSearchResultUae(row), chapter: String(row.chapter ?? "").padStart(2, "0") })),
   ].filter((row) => country === "BOTH" || row.country === country);
 
   const scored = allRows
     .map((row) => ({
       ...row,
-      score: scoreMatch(normalized, `${row.hsCode} ${row.descriptionEn} ${row.descriptionLocal ?? ""}`),
+      score: scoreMatch(normalized, `${row.hsCode} ${row.descriptionEn} ${row.descriptionLocal ?? ""}`, row.chapter, targetChapters),
     }))
     .filter((row) => row.score >= 0.05)
     .sort((a, b) => b.score - a.score || Number((b.dutyRate ?? 0) + (b.secondaryRate ?? 0)) - Number((a.dutyRate ?? 0) + (a.secondaryRate ?? 0)));
 
   if (!scored.length) return [];
 
-  // Return per-country top results with confidence
   if (country === "BOTH") {
     const perCountry = Math.max(3, Math.ceil(limit / 3));
     const cnTop = scored.filter(r => r.country === "CN").slice(0, perCountry);
     const inTop = scored.filter(r => r.country === "IN").slice(0, perCountry);
     const aeTop = scored.filter(r => r.country === "AE").slice(0, perCountry);
     return [...cnTop, ...inTop, ...aeTop]
-      .map(({ score, ...row }) => ({ ...row, confidence: confidencePercent(score) }));
+      .map(({ score, chapter, ...row }) => ({ ...row, confidence: confidencePercent(score) }));
   }
 
-  return scored.slice(0, limit).map(({ score, ...row }) => ({ ...row, confidence: confidencePercent(score) }));
+  return scored.slice(0, limit).map(({ score, chapter, ...row }) => ({ ...row, confidence: confidencePercent(score) }));
 }
 
 app.get("/api/v1/search", async (req, res) => {

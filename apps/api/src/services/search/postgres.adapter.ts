@@ -1,5 +1,6 @@
 import type { CodeResult, Country } from "@tradecode/shared-types";
 import { db } from "../../db.js";
+import { detectProductCategories } from "../../product-categories.js";
 import type { SearchProvider } from "./provider.js";
 
 /**
@@ -11,21 +12,18 @@ import type { SearchProvider } from "./provider.js";
  *   3. Most (≥50%) query words appear            → 0.4 + word coverage bonus
  *   4. Trigram similarity fallback               → similarity score (0-1)
  *
- * Within each tier, results are sorted by score descending.
+ * Results are multiplied by a chapter boost:
+ *   - If likelyChapters is non-empty and the code's chapter matches → ×1.5
+ *   - If likelyChapters is non-empty and the code's chapter doesn't match → ×0.15
+ *   - If no categories detected → ×1.0 (no adjustment)
  */
-function buildScoreSql(col: string, paramIndex: number): string {
-  // We build a CASE expression that produces a relevance score 0-1.
-  // $N is the raw query, $N+1 is the ILIKE pattern, $N+2 is the word array.
-  // For simplicity, we use a single parameter and handle word splitting in JS.
-  //
-  // The SQL uses:
-  //   - position(query IN lower(col)) for phrase match
-  //   - regexp_split_to_array(lower(query), '\s+') for word tokens
-  //   - array containment for word matching
-  //   - similarity() as fallback
-  //
-  // We return: score, and also a "match_quality" text for debugging.
-  return `
+function buildScoreSql(
+  col: string,
+  paramIndex: number,
+  chapterCol: string,
+  likelyChapters: string[],
+): string {
+  const baseScore = `
     CASE
       WHEN lower(${col}) = lower($${paramIndex}) THEN 1.0
       WHEN position(lower($${paramIndex}) IN lower(${col})) > 0 THEN 0.95
@@ -68,11 +66,22 @@ function buildScoreSql(col: string, paramIndex: number): string {
       ELSE similarity(${col}, $${paramIndex})
     END
   `;
+
+  if (likelyChapters.length === 0) return baseScore;
+
+  const chapterList = likelyChapters.map(c => `'${c}'`).join(", ");
+  return `
+    CASE
+      WHEN ${chapterCol}::text IN (${chapterList}) THEN LEAST(${baseScore} * 1.5, 1.0)
+      ELSE ${baseScore} * 0.15
+    END
+  `;
 }
 
 export class PostgresSearchProvider implements SearchProvider {
   async search(q: string, country: Country, limit = 20) {
     const like = `%${q}%`;
+    const likelyChapters = detectProductCategories(q);
 
     if (country === "BOTH") {
       const perCountry = Math.ceil(limit / 3);
@@ -85,26 +94,26 @@ export class PostgresSearchProvider implements SearchProvider {
               ciq_inspection "requiresInspection", is_restricted "isRestricted", is_prohibited "isProhibited",
               NULL::text "importPolicy", NULL::text "inspectionAgency", supervisory_conditions "supervisoryConditions",
               data_source "dataSource", last_updated::text "lastUpdated",
-              ${buildScoreSql("description_en", 1)} score
+              ${buildScoreSql("description_en", 1, "chapter", likelyChapters)} score
             FROM hs_codes_china
             UNION ALL
             SELECT 'IN', hs_code, description_en, description_hi, chapter, bcd_rate::float, igst_rate::float,
               requires_licence, requires_inspection, is_restricted, is_prohibited, import_policy, inspection_agency,
               NULL, data_source, last_updated::text,
-              ${buildScoreSql("description_en", 1)}
+              ${buildScoreSql("description_en", 1, "chapter", likelyChapters)}
             FROM hs_codes_india
             UNION ALL
             SELECT 'AE', hs_code, description_en, description_ar, chapter, customs_duty_rate::float, vat_rate::float,
               FALSE, FALSE, is_restricted, is_prohibited, NULL, NULL, NULL, data_source, last_updated::text,
-              ${buildScoreSql("description_en", 1)}
+              ${buildScoreSql("description_en", 1, "chapter", likelyChapters)}
             FROM hs_codes_uae
           ) s
-          WHERE score > 0.05 OR "hsCode" LIKE $3
+          WHERE score > 0.05 OR "hsCode" LIKE $2
         )
-        SELECT * FROM all_results WHERE rn <= $2
+        SELECT * FROM all_results WHERE rn <= $3
         ORDER BY score DESC
         LIMIT $4`,
-        q, perCountry, like, limit
+        q, like, perCountry, limit
       );
       return rows as CodeResult[];
     }
@@ -116,18 +125,18 @@ export class PostgresSearchProvider implements SearchProvider {
           ciq_inspection "requiresInspection", is_restricted "isRestricted", is_prohibited "isProhibited",
           NULL::text "importPolicy", NULL::text "inspectionAgency", supervisory_conditions "supervisoryConditions",
           data_source "dataSource", last_updated::text "lastUpdated",
-          ${buildScoreSql("description_en", 1)} score
+          ${buildScoreSql("description_en", 1, "chapter", likelyChapters)} score
         FROM hs_codes_china
         UNION ALL
         SELECT 'IN', hs_code, description_en, description_hi, chapter, bcd_rate::float, igst_rate::float,
           requires_licence, requires_inspection, is_restricted, is_prohibited, import_policy, inspection_agency,
           NULL, data_source, last_updated::text,
-          ${buildScoreSql("description_en", 1)}
+          ${buildScoreSql("description_en", 1, "chapter", likelyChapters)}
         FROM hs_codes_india
         UNION ALL
         SELECT 'AE', hs_code, description_en, description_ar, chapter, customs_duty_rate::float, vat_rate::float,
           FALSE, FALSE, is_restricted, is_prohibited, NULL, NULL, NULL, data_source, last_updated::text,
-          ${buildScoreSql("description_en", 1)}
+          ${buildScoreSql("description_en", 1, "chapter", likelyChapters)}
         FROM hs_codes_uae
       ) s WHERE (country = $2 OR $2 = 'BOTH') AND (score > 0.05 OR "hsCode" LIKE $3)
       ORDER BY score DESC LIMIT $4`,
