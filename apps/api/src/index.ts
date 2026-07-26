@@ -438,6 +438,127 @@ app.get("/api/v1/chapters/:country", async (req, res) => {
   res.json(chapters);
 });
 
+app.get("/api/v1/browse/:country", async (req, res) => {
+  try {
+    const countryParam = req.params.country;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(200, Math.max(10, parseInt(req.query.limit as string) || 100));
+    const chapter = (req.query.chapter as string) || "";
+    const q = ((req.query.q as string) || "").trim().toLowerCase();
+    const sort = (req.query.sort as string) || "hsCode";
+    const order = (req.query.order as string) === "desc" ? "desc" : "asc";
+
+    let rows: any[];
+    let mapRow: (row: any) => any;
+
+    if (countryParam === "AE") {
+      rows = await localUae();
+      mapRow = (r: any) => ({
+        country: "AE",
+        hsCode: r.hs_code,
+        descriptionEn: r.description_en ?? "",
+        descriptionLocal: r.description_ar ?? "",
+        chapter: String(r.chapter ?? "").padStart(2, "0"),
+        dutyRate: r.customs_duty_rate ?? null,
+        secondaryRate: r.vat_rate ?? null,
+        requiresLicence: false,
+        requiresInspection: false,
+        isRestricted: r.is_restricted ?? false,
+        isProhibited: r.is_prohibited ?? false,
+        importPolicy: null,
+        inspectionAgency: null,
+        supervisoryConditions: r.excise_rate > 0 ? `Excise: ${r.excise_rate}%` : null,
+        dataSource: r.data_source ?? null,
+        lastUpdated: r.last_updated ?? null,
+      });
+    } else if (countryParam === "CN") {
+      rows = await localChina();
+      mapRow = (r: any) => ({
+        country: "CN",
+        hsCode: r.hs_code_8 ?? r.hs_code,
+        descriptionEn: r.description_en ?? "",
+        descriptionLocal: r.description_zh ?? "",
+        chapter: String(r.chapter ?? "").padStart(2, "0"),
+        dutyRate: r.mfn_duty_rate ?? null,
+        secondaryRate: r.vat_rate ?? null,
+        requiresLicence: r.requires_licence ?? false,
+        requiresInspection: r.ciq_inspection ?? false,
+        isRestricted: r.is_restricted ?? false,
+        isProhibited: r.is_prohibited ?? false,
+        importPolicy: null,
+        inspectionAgency: null,
+        supervisoryConditions: r.supervisory_conditions ?? null,
+        dataSource: r.data_source ?? null,
+        lastUpdated: r.last_updated ?? null,
+      });
+    } else {
+      rows = await localIndia();
+      mapRow = (r: any) => ({
+        country: "IN",
+        hsCode: r.hs_code,
+        descriptionEn: r.description_en ?? "",
+        descriptionLocal: r.description_hi ?? "",
+        chapter: String(r.chapter ?? "").padStart(2, "0"),
+        dutyRate: r.bcd_rate ?? null,
+        secondaryRate: r.igst_rate ?? null,
+        requiresLicence: r.requires_licence ?? false,
+        requiresInspection: r.requires_inspection ?? false,
+        isRestricted: r.is_restricted ?? false,
+        isProhibited: r.is_prohibited ?? false,
+        importPolicy: r.import_policy ?? null,
+        inspectionAgency: r.inspection_agency ?? null,
+        supervisoryConditions: null,
+        dataSource: r.data_source ?? null,
+        lastUpdated: r.last_updated ?? null,
+      });
+    }
+
+    const allChapters = [...new Set(rows.map((r: any) => String(r.chapter ?? "").padStart(2, "0")))].filter(Boolean).sort();
+
+    let mapped = rows.map(mapRow);
+
+    if (chapter) {
+      mapped = mapped.filter((r) => r.chapter === chapter);
+    }
+
+    if (q) {
+      mapped = mapped.filter((r) =>
+        String(r.hsCode).includes(q) ||
+        String(r.descriptionEn).toLowerCase().includes(q) ||
+        String(r.descriptionLocal).toLowerCase().includes(q)
+      );
+    }
+
+    const total = mapped.length;
+
+    const sortFn = (a: any, b: any) => {
+      let va: any, vb: any;
+      if (sort === "dutyRate") {
+        va = a.dutyRate ?? -1;
+        vb = b.dutyRate ?? -1;
+      } else if (sort === "description") {
+        va = a.descriptionEn ?? "";
+        vb = b.descriptionEn ?? "";
+      } else {
+        va = a.hsCode ?? "";
+        vb = b.hsCode ?? "";
+      }
+      if (typeof va === "string") return order === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+      return order === "asc" ? va - vb : vb - va;
+    };
+
+    mapped.sort(sortFn);
+
+    const start = (page - 1) * limit;
+    const results = mapped.slice(start, start + limit);
+
+    res.json({ results, total, page, limit, chapters: allChapters });
+  } catch (err: any) {
+    console.error("browse error:", err);
+    res.status(500).json({ error: err?.message ?? "Browse failed" });
+  }
+});
+
 app.get("/api/v1/sections/:country", async (req, res) => {
   const countryParam = req.params.country;
   let rows: any[];
