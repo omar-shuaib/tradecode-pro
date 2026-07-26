@@ -15,11 +15,19 @@ export async function classify(description: string, country: string) {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const response = await ai.models.generateContent({
       model: MODEL,
-      contents: `Return JSON only: five likely ${country} 8-digit HS codes for: ${description}`,
+      contents: `Return JSON only: an array of 5 objects for ${country} HS codes for: "${description}". Each object must have: hsCode (8-digit string), descriptionEn (string), confidence (number 0-100 representing how closely this code matches the product). Rank by confidence descending. Be precise — a smart watch is NOT a smart card reader.`,
       config: { responseMimeType: "application/json", temperature: 0.1 },
     });
 
-    const results = JSON.parse(response.text ?? "[]");
+    const raw = JSON.parse(response.text ?? "[]");
+    // Normalize: ensure confidence field exists
+    const results = (Array.isArray(raw) ? raw : []).map((r: any, i: number) => ({
+      country,
+      hsCode: r.hsCode ?? r.hs_code ?? "unknown",
+      descriptionEn: r.descriptionEn ?? r.description_en ?? r.description ?? "",
+      confidence: typeof r.confidence === "number" ? r.confidence : Math.max(20, 90 - i * 15),
+    }));
+
     await db.aiClassification.create({ data: { productDescription: description, country, results } });
     return results;
   } catch {

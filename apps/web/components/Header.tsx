@@ -25,6 +25,7 @@ export function Header() {
 
   return (
     <header
+      className="glass-header"
       style={{
         position: "fixed",
         top: 0,
@@ -36,11 +37,7 @@ export function Header() {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 24px",
-        backgroundColor: "color-mix(in srgb, var(--bg) 72%, transparent)",
-        backdropFilter: "blur(16px) saturate(180%)",
-        WebkitBackdropFilter: "blur(16px) saturate(180%)",
-        borderBottom: "1px solid var(--border)",
-        transition: "background-color 0.2s, border-color 0.2s",
+        transition: "background-color 0.3s, border-color 0.3s",
       }}
     >
       <Link href="/" style={{ display: "flex", alignItems: "baseline", gap: 2, textDecoration: "none" }}>
@@ -99,15 +96,13 @@ export function Header() {
 
       {open && (
         <div
+          className="glass-elevated"
           style={{
             position: "fixed",
             top: 64,
             left: 0,
             right: 0,
-            backgroundColor: "color-mix(in srgb, var(--bg) 92%, transparent)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            borderBottom: "1px solid var(--border)",
+            borderBottom: "var(--glass-border)",
             padding: "12px 24px",
             display: "flex",
             flexDirection: "column",

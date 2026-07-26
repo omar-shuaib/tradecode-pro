@@ -1,13 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { Brain, Search, Globe, CheckCircle, AlertTriangle } from "lucide-react";
+import { Brain, Search, Globe, CheckCircle, AlertTriangle, Trophy, TrendingUp } from "lucide-react";
 import { api } from "../../lib/api";
 import { useTranslation } from "../../lib/i18n";
 import { CodePopup } from "../../components/CodePopup";
 import { cn } from "../../lib/utils";
 
-function normalizeResult(item: any) {
+type ClassifiedItem = {
+  country: string;
+  hsCode: string;
+  descriptionEn: string;
+  descriptionLocal: string | null;
+  dutyRate: number | null;
+  secondaryRate: number | null;
+  requiresLicence: boolean;
+  requiresInspection: boolean;
+  isRestricted: boolean;
+  isProhibited: boolean;
+  confidence?: number;
+};
+
+function normalizeResult(item: any): ClassifiedItem {
   return {
     country: item.country ?? "CN",
     hsCode: item.hsCode ?? item.hs_code ?? item.code ?? "unknown",
@@ -19,7 +33,69 @@ function normalizeResult(item: any) {
     requiresInspection: Boolean(item.requiresInspection ?? item.requires_inspection),
     isRestricted: Boolean(item.isRestricted ?? item.is_restricted),
     isProhibited: Boolean(item.isProhibited ?? item.is_prohibited),
+    confidence: typeof item.confidence === "number" ? item.confidence : undefined,
   };
+}
+
+function confidenceColor(c: number): string {
+  if (c >= 80) return "var(--success)";
+  if (c >= 50) return "var(--accent)";
+  if (c >= 30) return "var(--warning)";
+  return "var(--error)";
+}
+
+function confidenceBg(c: number): string {
+  if (c >= 80) return "var(--success-light)";
+  if (c >= 50) return "var(--accent-light)";
+  if (c >= 30) return "var(--warning-light)";
+  return "var(--error-light)";
+}
+
+function confidenceLabel(c: number): string {
+  if (c >= 90) return "Excellent match";
+  if (c >= 75) return "Strong match";
+  if (c >= 50) return "Good match";
+  if (c >= 30) return "Partial match";
+  if (c >= 15) return "Weak match";
+  return "Low relevance";
+}
+
+function ConfidenceBar({ score }: { score: number }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+      <div
+        style={{
+          flex: 1,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: "var(--bg-elevated)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${score}%`,
+            height: "100%",
+            borderRadius: 3,
+            backgroundColor: confidenceColor(score),
+            transition: "width 0.6s ease-out",
+          }}
+        />
+      </div>
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: confidenceColor(score),
+          minWidth: 36,
+          textAlign: "right",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {score}%
+      </span>
+    </div>
+  );
 }
 
 function SkeletonCard() {
@@ -33,7 +109,7 @@ function SkeletonCard() {
         <div className="skeleton" style={{ width: 50, height: 20 }} />
       </div>
       <div className="skeleton" style={{ width: "80%", height: 14 }} />
-      <div className="skeleton" style={{ width: "60%", height: 12 }} />
+      <div className="skeleton" style={{ width: "100%", height: 6 }} />
       <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
         <div className="skeleton" style={{ width: 64, height: 18 }} />
         <div className="skeleton" style={{ width: 52, height: 18 }} />
@@ -66,6 +142,19 @@ export default function ClassifyPage() {
   }
 
   const items = (result?.results ?? []).map(normalizeResult);
+
+  // Group by country, each already sorted by confidence from backend
+  const byCountry = {
+    CN: items.filter((i: ClassifiedItem) => i.country === "CN"),
+    IN: items.filter((i: ClassifiedItem) => i.country === "IN"),
+    AE: items.filter((i: ClassifiedItem) => i.country === "AE"),
+  };
+
+  const countryMeta: Record<string, { label: string; color: string; bg: string }> = {
+    CN: { label: "China", color: "var(--warning)", bg: "var(--warning-light)" },
+    IN: { label: "India", color: "var(--success)", bg: "var(--success-light)" },
+    AE: { label: "UAE", color: "#0284c7", bg: "#e0f2fe" },
+  };
 
   return (
     <main className="page-shell" style={{ paddingBottom: 80 }}>
@@ -194,133 +283,166 @@ export default function ClassifyPage() {
                   {result.fallback ? t("classify.result.fallback") : t("classify.result.direct")}
                 </div>
               </div>
-              <span
-                className={cn(
-                  "badge",
-                  items.length ? "badge-success" : "badge-warning"
-                )}
-              >
+              <span className={cn("badge", items.length ? "badge-success" : "badge-warning")}>
                 {t("classify.result.matches", { n: items.length })}
               </span>
             </div>
 
             {items.length > 0 ? (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                  gap: 14,
-                }}
-              >
-                {items.map((item: ReturnType<typeof normalizeResult>, i: number) => {
-                  const hasComplianceNote = item.requiresLicence || item.isRestricted || item.isProhibited;
-                  const dutyHigh = item.country === "CN" ? 13 : item.country === "IN" ? 15 : 10;
-                  const isHighDuty = (item.dutyRate ?? 0) >= dutyHigh;
-
+              <div style={{ display: "grid", gap: 24 }}>
+                {(Object.keys(byCountry) as Array<keyof typeof byCountry>).map((code) => {
+                  const countryItems = byCountry[code];
+                  if (!countryItems.length) return null;
+                  const meta = countryMeta[code];
                   return (
-                    <article
-                      key={`${item.country}-${item.hsCode}-${item.descriptionEn}`}
-                      className="card"
-                      onClick={() => setSelectedCode(item.hsCode)}
-                      style={{
-                        padding: 20,
-                        cursor: "pointer",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 10,
-                        animationDelay: `${i * 50}ms`,
-                        animation: "slideUp 0.3s ease-out both",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <span style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 700, color: "var(--text)" }}>
-                            {item.hsCode}
-                          </span>
-                          <span
-                            className="badge"
-                            style={{
-                              backgroundColor: item.country === "CN" ? "var(--warning-light)" : item.country === "IN" ? "var(--success-light)" : "#e0f2fe",
-                              color: item.country === "CN" ? "var(--warning)" : item.country === "IN" ? "var(--success)" : "#0284c7",
-                              fontSize: 11,
-                              padding: "1px 8px",
-                              alignSelf: "flex-start",
-                            }}
-                          >
-                            {item.country === "CN" ? t("common.china") : item.country === "IN" ? t("common.india") : t("common.uae")}
-                          </span>
-                        </div>
-                        <span
-                          className="badge"
-                          style={{
-                            backgroundColor: isHighDuty ? "var(--warning-light)" : "var(--accent-light)",
-                            color: isHighDuty ? "var(--warning)" : "var(--accent)",
-                            fontSize: 13,
-                            fontWeight: 700,
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          {item.dutyRate != null ? `${item.dutyRate}%` : t("common.na")}
-                        </span>
-                      </div>
-
-                      <p
+                    <div key={code}>
+                      <div
                         style={{
-                          margin: 0,
-                          fontSize: 13,
-                          lineHeight: 1.5,
-                          color: "var(--text-secondary)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 12,
+                          paddingBottom: 8,
+                          borderBottom: "1px solid var(--border)",
                         }}
                       >
-                        {item.descriptionEn}
-                      </p>
-
-                      {item.descriptionLocal && (
-                        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
-                          {item.descriptionLocal}
-                        </p>
-                      )}
-
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 2 }}>
                         <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            padding: "2px 8px",
-                            fontSize: 11,
-                            fontWeight: 500,
-                            borderRadius: 9999,
-                            backgroundColor: isHighDuty ? "var(--warning-light)" : "var(--success-light)",
-                            color: isHighDuty ? "var(--warning)" : "var(--success)",
-                          }}
+                          className="badge"
+                          style={{ backgroundColor: meta.bg, color: meta.color, fontSize: 13, fontWeight: 600 }}
                         >
-                          {isHighDuty ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />}
-                          {isHighDuty ? t("classify.result.high") : t("classify.result.normal")}
+                          {meta.label}
                         </span>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            padding: "2px 8px",
-                            fontSize: 11,
-                            fontWeight: 500,
-                            borderRadius: 9999,
-                            backgroundColor: hasComplianceNote ? "var(--warning-light)" : "var(--success-light)",
-                            color: hasComplianceNote ? "var(--warning)" : "var(--success)",
-                          }}
-                        >
-                          {hasComplianceNote ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />}
-                          {hasComplianceNote ? t("classify.result.compliance") : t("classify.result.clear")}
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                          {countryItems.length} result{countryItems.length !== 1 ? "s" : ""} ranked by relevance
                         </span>
                       </div>
-                    </article>
+
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {countryItems.map((item: ClassifiedItem, i: number) => {
+                          const hasComplianceNote = item.requiresLicence || item.isRestricted || item.isProhibited;
+                          const dutyHigh = code === "CN" ? 13 : code === "IN" ? 15 : 10;
+                          const isHighDuty = (item.dutyRate ?? 0) >= dutyHigh;
+                          const conf = item.confidence ?? Math.max(10, 90 - i * 15);
+                          const isBest = i === 0 && conf >= 50;
+
+                          return (
+                            <article
+                              key={`${item.country}-${item.hsCode}-${i}`}
+                              className={cn("card", isBest && "ring-accent")}
+                              onClick={() => setSelectedCode(item.hsCode)}
+                              style={{
+                                padding: 16,
+                                cursor: "pointer",
+                                display: "grid",
+                                gridTemplateColumns: "1fr auto",
+                                gridTemplateRows: "auto auto auto",
+                                gap: "4px 16px",
+                                animationDelay: `${i * 40}ms`,
+                                animation: "slideUp 0.3s ease-out both",
+                                borderLeft: isBest ? `3px solid var(--accent)` : undefined,
+                              }}
+                            >
+                              {/* Row 1: Code + Country + Confidence */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
+                                  {item.hsCode}
+                                </span>
+                                {isBest && (
+                                  <span className="badge" style={{ backgroundColor: "var(--accent)", color: "var(--accent-text)", fontSize: 10, padding: "1px 6px" }}>
+                                    <Trophy style={{ width: 10, height: 10 }} /> Best
+                                  </span>
+                                )}
+                                <span
+                                  className="badge"
+                                  style={{ backgroundColor: meta.bg, color: meta.color, fontSize: 11, padding: "1px 6px" }}
+                                >
+                                  {meta.label}
+                                </span>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    backgroundColor: confidenceBg(conf),
+                                    color: confidenceColor(conf),
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                    fontFamily: "monospace",
+                                  }}
+                                >
+                                  {item.dutyRate != null ? `${item.dutyRate}%` : "N/A"}
+                                </span>
+                              </div>
+
+                              {/* Row 2: Description */}
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: 13,
+                                  lineHeight: 1.5,
+                                  color: "var(--text-secondary)",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                  gridColumn: "1 / -1",
+                                }}
+                              >
+                                {item.descriptionEn}
+                              </p>
+
+                              {/* Row 3: Confidence Bar */}
+                              <div style={{ gridColumn: "1 / -1", marginTop: 4 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                                  <TrendingUp style={{ width: 12, height: 12, color: confidenceColor(conf) }} />
+                                  <span style={{ fontSize: 11, fontWeight: 500, color: confidenceColor(conf) }}>
+                                    {confidenceLabel(conf)}
+                                  </span>
+                                </div>
+                                <ConfidenceBar score={conf} />
+                              </div>
+
+                              {/* Row 4: Tags */}
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, gridColumn: "1 / -1", marginTop: 4 }}>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    padding: "2px 8px",
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    borderRadius: 9999,
+                                    backgroundColor: isHighDuty ? "var(--warning-light)" : "var(--success-light)",
+                                    color: isHighDuty ? "var(--warning)" : "var(--success)",
+                                  }}
+                                >
+                                  {isHighDuty ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />}
+                                  {isHighDuty ? t("classify.result.high") : t("classify.result.normal")}
+                                </span>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    padding: "2px 8px",
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    borderRadius: 9999,
+                                    backgroundColor: hasComplianceNote ? "var(--warning-light)" : "var(--success-light)",
+                                    color: hasComplianceNote ? "var(--warning)" : "var(--success)",
+                                  }}
+                                >
+                                  {hasComplianceNote ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />}
+                                  {hasComplianceNote ? t("classify.result.compliance") : t("classify.result.clear")}
+                                </span>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -351,16 +473,18 @@ export default function ClassifyPage() {
         )}
 
         {loading && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: 14,
-              marginTop: 14,
-            }}
-          >
-            {Array.from({ length: 4 }).map((_, i) => (
-              <SkeletonCard key={i} />
+          <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
+            {(["China", "India", "UAE"] as const).map((label) => (
+              <div key={label}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  {label}
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <SkeletonCard key={`${label}-${i}`} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

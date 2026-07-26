@@ -280,17 +280,100 @@ function tokenize(text: string) {
     .filter((token) => token.length >= 2);
 }
 
-function scoreMatch(query: string, candidate: string) {
+/**
+ * Score how well a query matches a candidate HS code description.
+ * Returns 0-1 confidence score.
+ *
+ * Scoring tiers:
+ *   1. Exact phrase match in description         → 0.95-1.0
+ *   2. ALL query words appear (in order)         → 0.80-0.95
+ *   3. ALL query words appear (unordered)        → 0.65-0.80
+ *   4. Most (>=60%) words appear                 → 0.40-0.65
+ *   5. Some words appear                         → 0.15-0.40
+ *   6. Partial/stem matches only                 → 0.05-0.15
+ *   7. No match                                 → 0
+ */
+function scoreMatch(query: string, candidate: string): number {
   const qTokens = tokenize(query);
   const cTokens = tokenize(candidate);
   if (!qTokens.length || !cTokens.length) return 0;
+
+  const cLower = candidate.toLowerCase();
+  const qLower = query.toLowerCase().trim();
   const candidateSet = new Set(cTokens);
-  const overlap = qTokens.filter((token) => candidateSet.has(token)).length;
-  const exactHit = candidate.includes(query.toLowerCase().trim()) ? 1 : 0;
-  const partialHits = qTokens.filter((token) =>
-    cTokens.some((ct) => ct.includes(token) || token.includes(ct))
+
+  // Exact phrase match
+  if (cLower.includes(qLower)) {
+    // Bonus: check if query words appear in order
+    const qWords = qTokens;
+    let lastIdx = -1;
+    let inOrder = true;
+    for (const w of qWords) {
+      const idx = cLower.indexOf(w, lastIdx + 1);
+      if (idx === -1) { inOrder = false; break; }
+      lastIdx = idx;
+    }
+    return inOrder ? 1.0 : 0.95;
+  }
+
+  // Exact token overlap
+  const exactOverlap = qTokens.filter((t) => candidateSet.has(t)).length;
+  const exactCoverage = exactOverlap / qTokens.length;
+
+  // Partial/stem overlap (one token contains the other)
+  const partialOverlap = qTokens.filter((t) =>
+    cTokens.some((ct) => ct.includes(t) || t.includes(ct))
   ).length;
-  return (overlap * 0.5 + partialHits * 0.3 + exactHit) / qTokens.length;
+  const partialCoverage = partialOverlap / qTokens.length;
+
+  // Word order bonus: check if query words appear in order in candidate
+  let orderBonus = 0;
+  {
+    let lastIdx = -1;
+    let inOrderCount = 0;
+    for (const w of qTokens) {
+      const idx = cLower.indexOf(w, lastIdx + 1);
+      if (idx !== -1) { inOrderCount++; lastIdx = idx; }
+    }
+    orderBonus = (inOrderCount / qTokens.length) * 0.1;
+  }
+
+  // Tier 2: All words present
+  if (exactCoverage === 1) {
+    return Math.min(0.95, 0.80 + exactCoverage * 0.15 + orderBonus);
+  }
+
+  // Tier 3: All partial matches
+  if (partialCoverage === 1) {
+    return Math.min(0.85, 0.65 + partialCoverage * 0.2 + orderBonus);
+  }
+
+  // Tier 4: Most words present (>=60%)
+  if (exactCoverage >= 0.6 || partialCoverage >= 0.6) {
+    const best = Math.max(exactCoverage, partialCoverage);
+    return Math.min(0.75, 0.40 + best * 0.35 + orderBonus);
+  }
+
+  // Tier 5: Some words present
+  if (exactCoverage >= 0.3 || partialCoverage >= 0.3) {
+    const best = Math.max(exactCoverage, partialCoverage);
+    return Math.min(0.55, 0.15 + best * 0.4 + orderBonus);
+  }
+
+  // Tier 6: Minimal partial matches
+  if (exactCoverage > 0 || partialCoverage > 0) {
+    const best = Math.max(exactCoverage, partialCoverage);
+    return Math.min(0.30, 0.05 + best * 0.25);
+  }
+
+  return 0;
+}
+
+/**
+ * Round confidence to a display-friendly percentage (0-100).
+ */
+function confidencePercent(score: number): number {
+  return Math.round(Math.min(100, Math.max(0, score * 100)));
 }
 
 async function fallbackClassify(description: string, country: "CN" | "IN" | "AE" | "BOTH", limit: number) {
@@ -313,11 +396,22 @@ async function fallbackClassify(description: string, country: "CN" | "IN" | "AE"
       ...row,
       score: scoreMatch(normalized, `${row.hsCode} ${row.descriptionEn} ${row.descriptionLocal ?? ""}`),
     }))
-    .filter((row) => row.score >= 0.1)
+    .filter((row) => row.score >= 0.05)
     .sort((a, b) => b.score - a.score || Number((b.dutyRate ?? 0) + (b.secondaryRate ?? 0)) - Number((a.dutyRate ?? 0) + (a.secondaryRate ?? 0)));
 
   if (!scored.length) return [];
-  return scored.slice(0, limit).map(({ score: _score, ...row }) => row);
+
+  // Return per-country top results with confidence
+  if (country === "BOTH") {
+    const perCountry = Math.max(3, Math.ceil(limit / 3));
+    const cnTop = scored.filter(r => r.country === "CN").slice(0, perCountry);
+    const inTop = scored.filter(r => r.country === "IN").slice(0, perCountry);
+    const aeTop = scored.filter(r => r.country === "AE").slice(0, perCountry);
+    return [...cnTop, ...inTop, ...aeTop]
+      .map(({ score, ...row }) => ({ ...row, confidence: confidencePercent(score) }));
+  }
+
+  return scored.slice(0, limit).map(({ score, ...row }) => ({ ...row, confidence: confidencePercent(score) }));
 }
 
 app.get("/api/v1/search", async (req, res) => {
@@ -750,7 +844,7 @@ app.post("/api/v1/classify", async (req, res) => {
   try {
     const payload = ClassifyRequestSchema.parse(req.body);
     const ai = await classify(payload.description, payload.country);
-    const results = ai ?? (await fallbackClassify(payload.description, payload.country, 5));
+    const results = ai ?? (await fallbackClassify(payload.description, payload.country, 15));
     res.json({ fallback: !ai, results });
   } catch (err: any) {
     console.error("Classify error:", err?.message ?? err);
