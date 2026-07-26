@@ -85,7 +85,7 @@ export class PostgresSearchProvider implements SearchProvider {
 
     if (country === "BOTH") {
       const perCountry = Math.ceil(limit / 3);
-      const rows = await db.$queryRawUnsafe<any[]>(
+      const rows = await db.$queryRawUnsafe(
         `WITH all_results AS (
           SELECT *, ROW_NUMBER() OVER (PARTITION BY country ORDER BY score DESC) as rn
           FROM (
@@ -118,7 +118,7 @@ export class PostgresSearchProvider implements SearchProvider {
       return rows as CodeResult[];
     }
 
-    const rows = await db.$queryRawUnsafe<any[]>(
+    const rows = await db.$queryRawUnsafe(
       `SELECT * FROM (
         SELECT 'CN' country, hs_code_8 "hsCode", description_en "descriptionEn", description_zh "descriptionLocal", chapter,
           mfn_duty_rate::float "dutyRate", vat_rate::float "secondaryRate", requires_licence "requiresLicence",

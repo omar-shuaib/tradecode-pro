@@ -103,10 +103,10 @@ const localChinaPath = new URL("../../../data/fixtures/local-china-seed.json", i
 const localUaePath = new URL("../../../data/fixtures/local-uae-seed.json", import.meta.url);
 const candidatePath = new URL("../../../data/fixtures/unverified-candidates.json", import.meta.url);
 
-let localIndiaCache: LocalIndiaRow[] | null = null;
-let localChinaCache: LocalChinaRow[] | null = null;
-let localUaeCache: LocalUaeRow[] | null = null;
-let candidateCache: CandidateRow[] | null = null;
+let localIndiaCache: LocalIndiaRow[] = [];
+let localChinaCache: LocalChinaRow[] = [];
+let localUaeCache: LocalUaeRow[] = [];
+let candidateCache: CandidateRow[] = [];
 
 async function loadJson<T>(url: URL): Promise<T> {
   return JSON.parse(await readFile(url, "utf8")) as T;
