@@ -1,1 +1,8 @@
-import { DUTY_DISCLAIMER_TEXT } from "../lib/shared-types";export function DutyDisclaimer(){return <p className="disclaimer">{DUTY_DISCLAIMER_TEXT}</p>}
+"use client";
+
+import { useTranslation } from "../lib/i18n";
+
+export function DutyDisclaimer() {
+  const { t } = useTranslation();
+  return <p className="disclaimer">{t("disclaimer")}</p>;
+}

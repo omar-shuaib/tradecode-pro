@@ -3,15 +3,9 @@
 import { useState } from "react";
 import { Brain, Search, Globe, CheckCircle, AlertTriangle } from "lucide-react";
 import { api } from "../../lib/api";
+import { useTranslation } from "../../lib/i18n";
 import { CodePopup } from "../../components/CodePopup";
 import { cn } from "../../lib/utils";
-
-const samples = [
-  "electric control panels",
-  "packaged herbal tea",
-  "lithium battery pack",
-  "plastic kitchen container",
-];
 
 function normalizeResult(item: any) {
   return {
@@ -53,6 +47,14 @@ export default function ClassifyPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const { t } = useTranslation();
+
+  const samples = [
+    t("classify.sample.electric"),
+    t("classify.sample.herbal"),
+    t("classify.sample.lithium"),
+    t("classify.sample.plastic"),
+  ];
 
   async function classify() {
     setLoading(true);
@@ -100,7 +102,7 @@ export default function ClassifyPage() {
             lineHeight: 1.1,
           }}
         >
-          Describe a product, get HS codes
+          {t("classify.title")}
         </h1>
         <p
           style={{
@@ -112,17 +114,17 @@ export default function ClassifyPage() {
             lineHeight: 1.6,
           }}
         >
-          Type a product description and we'll match it against 18,000+ HS codes across China and India.
+          {t("classify.subtitle")}
         </p>
 
         <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
           <span className="badge" style={{ backgroundColor: "var(--accent-light)", color: "var(--accent)" }}>
             <Search style={{ width: 12, height: 12 }} />
-            Smart keyword search
+            {t("classify.badge.smart")}
           </span>
           <span className="badge" style={{ backgroundColor: "var(--success-light)", color: "var(--success)" }}>
             <Globe style={{ width: 12, height: 12 }} />
-            {18000}+ HS codes
+            {t("classify.badge.count")}
           </span>
         </div>
       </section>
@@ -156,7 +158,7 @@ export default function ClassifyPage() {
           className="input"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe your product in any language..."
+          placeholder={t("classify.placeholder")}
           style={{ minHeight: 160, resize: "vertical", fontSize: 15, lineHeight: 1.6 }}
         />
 
@@ -172,12 +174,12 @@ export default function ClassifyPage() {
                 <span style={{ display: "inline-flex", animation: "shimmer 1.8s ease-in-out infinite" }}>
                   <Brain style={{ width: 16, height: 16 }} />
                 </span>
-                Classifying...
+                {t("classify.loading")}
               </>
             ) : (
               <>
                 <Brain style={{ width: 16, height: 16 }} />
-                Classify
+                {t("classify.btn")}
               </>
             )}
           </button>
@@ -187,9 +189,9 @@ export default function ClassifyPage() {
           <div style={{ marginTop: 4 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>Suggested codes</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{t("classify.result.title")}</div>
                 <div style={{ marginTop: 2, fontSize: 13, color: "var(--text-muted)" }}>
-                  {result.fallback ? "Ranked by keyword relevance across all HS codes" : "Results from database search"}
+                  {result.fallback ? t("classify.result.fallback") : t("classify.result.direct")}
                 </div>
               </div>
               <span
@@ -198,7 +200,7 @@ export default function ClassifyPage() {
                   items.length ? "badge-success" : "badge-warning"
                 )}
               >
-                {items.length} match{items.length !== 1 ? "es" : ""}
+                {t("classify.result.matches", { n: items.length })}
               </span>
             </div>
 
@@ -245,7 +247,7 @@ export default function ClassifyPage() {
                               alignSelf: "flex-start",
                             }}
                           >
-                            {item.country === "CN" ? "China" : "India"}
+                            {item.country === "CN" ? t("common.china") : t("common.india")}
                           </span>
                         </div>
                         <span
@@ -258,7 +260,7 @@ export default function ClassifyPage() {
                             fontFamily: "monospace",
                           }}
                         >
-                          {item.dutyRate != null ? `${item.dutyRate}%` : "n/a"}
+                          {item.dutyRate != null ? `${item.dutyRate}%` : t("common.na")}
                         </span>
                       </div>
 
@@ -299,7 +301,7 @@ export default function ClassifyPage() {
                           }}
                         >
                           {isHighDuty ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />}
-                          Duty {isHighDuty ? "high" : "normal"}
+                          {isHighDuty ? t("classify.result.high") : t("classify.result.normal")}
                         </span>
                         <span
                           style={{
@@ -315,7 +317,7 @@ export default function ClassifyPage() {
                           }}
                         >
                           {hasComplianceNote ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />}
-                          {hasComplianceNote ? "Compliance note" : "Clear"}
+                          {hasComplianceNote ? t("classify.result.compliance") : t("classify.result.clear")}
                         </span>
                       </div>
                     </article>
@@ -326,10 +328,10 @@ export default function ClassifyPage() {
               <div className="card" style={{ padding: 32, textAlign: "center" }}>
                 <Search style={{ width: 32, height: 32, color: "var(--text-muted)", margin: "0 auto 10px" }} />
                 <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>
-                  No strong match returned for this description.
+                  {t("classify.empty.title")}
                 </p>
                 <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-                  Try a more specific product name or HS code.
+                  {t("classify.empty.desc")}
                 </p>
               </div>
             )}
@@ -340,10 +342,10 @@ export default function ClassifyPage() {
           <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
             <Search style={{ width: 32, height: 32, margin: "0 auto 10px", color: "var(--text-muted)" }} />
             <div style={{ fontWeight: 500, color: "var(--text-secondary)", fontSize: 14 }}>
-              Enter a product description above
+              {t("classify.prompt.title")}
             </div>
             <div style={{ marginTop: 4, fontSize: 13 }}>
-              We'll match it against all {18000}+ HS codes in both databases
+              {t("classify.prompt.desc")}
             </div>
           </div>
         )}

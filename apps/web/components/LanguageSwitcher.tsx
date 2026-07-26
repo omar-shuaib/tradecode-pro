@@ -1,1 +1,50 @@
-"use client";import {useEffect,useState} from "react";export function LanguageSwitcher(){const[lang,setLang]=useState("en");useEffect(()=>setLang(localStorage.getItem("tradecode-lang")??"en"),[]);function choose(v:string){setLang(v);localStorage.setItem("tradecode-lang",v);document.documentElement.lang=v}return <div aria-label="Language"><button onClick={()=>choose("en")}>EN</button> <button onClick={()=>choose("zh-CN")}>中文</button> <button onClick={()=>choose("hi")}>हिन्दी</button><span className="muted"> {lang}</span></div>}
+"use client";
+
+import { useTranslation, type Locale } from "../lib/i18n";
+import { Globe } from "lucide-react";
+
+const options: { value: Locale; label: string }[] = [
+  { value: "en", label: "EN" },
+  { value: "zh", label: "中文" },
+];
+
+export function LanguageSwitcher() {
+  const { locale, setLocale } = useTranslation();
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        padding: 2,
+        borderRadius: "var(--radius-sm)",
+        backgroundColor: "var(--bg-elevated)",
+        border: "1px solid var(--border)",
+      }}
+    >
+      <Globe style={{ width: 14, height: 14, color: "var(--text-muted)", marginLeft: 4 }} />
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => setLocale(opt.value)}
+          style={{
+            padding: "4px 8px",
+            fontSize: 12,
+            fontWeight: 600,
+            borderRadius: "calc(var(--radius-sm) - 2px)",
+            border: "none",
+            cursor: "pointer",
+            transition: "all 0.15s",
+            backgroundColor: locale === opt.value ? "var(--accent)" : "transparent",
+            color: locale === opt.value ? "var(--accent-text, #fff)" : "var(--text-secondary)",
+            lineHeight: 1,
+          }}
+          aria-label={`Switch to ${opt.value === "en" ? "English" : "中文"}`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}

@@ -5,18 +5,23 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Search, Brain, ArrowLeftRight, Database, Menu, X } from "lucide-react";
 import { ThemeToggle } from "./ThemeProvider";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useTranslation } from "../lib/i18n";
 import { cn } from "../lib/utils";
 
-const NAV = [
-  { href: "/search", label: "Search", icon: Search },
-  { href: "/classify", label: "Classify", icon: Brain },
-  { href: "/compare", label: "Compare", icon: ArrowLeftRight },
-  { href: "/database/CN", label: "Database", icon: Database },
+const NAV_KEYS = [
+  { href: "/search", key: "nav.search" as const, icon: Search },
+  { href: "/classify", key: "nav.classify" as const, icon: Brain },
+  { href: "/compare", key: "nav.compare" as const, icon: ArrowLeftRight },
+  { href: "/database/CN", key: "nav.database" as const, icon: Database },
 ] as const;
 
 export function Header() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { t } = useTranslation();
+
+  const NAV = NAV_KEYS.map((n) => ({ ...n, label: t(n.key) }));
 
   return (
     <header
@@ -67,6 +72,9 @@ export function Header() {
       </nav>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="desktop-nav">
+          <LanguageSwitcher />
+        </div>
         <ThemeToggle />
         <button
           onClick={() => setOpen(!open)}
@@ -124,6 +132,9 @@ export function Header() {
               {label}
             </Link>
           ))}
+          <div style={{ padding: "8px 0", borderTop: "1px solid var(--border)", marginTop: 4 }}>
+            <LanguageSwitcher />
+          </div>
         </div>
       )}
 

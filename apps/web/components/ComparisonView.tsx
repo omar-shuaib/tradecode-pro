@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Search, Globe, CheckCircle, AlertTriangle, Shield } from "lucide-react";
 import { api } from "../lib/api";
+import { useTranslation } from "../lib/i18n";
 import { cn } from "../lib/utils";
 
 type MatchRow = {
@@ -136,7 +137,7 @@ function SideCard({
       </div>
 
       <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700, color: "var(--text)" }}>
-        {code ?? "—"}
+        {code ?? "\u2014"}
       </div>
 
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--text-secondary)" }}>
@@ -222,6 +223,7 @@ export function ComparisonView() {
   const [row, setRow] = useState<MatchRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   async function compare() {
     setLoading(true);
@@ -242,22 +244,22 @@ export function ComparisonView() {
 
   const cnFlags = [
     china?.dutyRate != null && china.dutyRate >= 12
-      ? { icon: AlertTriangle, label: "High MFN", tone: "warn" as const }
-      : { icon: CheckCircle, label: "MFN normal", tone: "good" as const },
-    china?.requiresLicence ? { icon: AlertTriangle, label: "Licence", tone: "warn" as const } : null,
-    china?.requiresInspection ? { icon: AlertTriangle, label: "Inspection", tone: "warn" as const } : null,
-    china?.isRestricted ? { icon: AlertTriangle, label: "Restricted", tone: "warn" as const } : null,
-    china?.isProhibited ? { icon: AlertTriangle, label: "Prohibited", tone: "warn" as const } : null,
+      ? { icon: AlertTriangle, label: t("compare.high.mfn"), tone: "warn" as const }
+      : { icon: CheckCircle, label: t("compare.normal.mfn"), tone: "good" as const },
+    china?.requiresLicence ? { icon: AlertTriangle, label: t("compare.licence"), tone: "warn" as const } : null,
+    china?.requiresInspection ? { icon: AlertTriangle, label: t("compare.inspection"), tone: "warn" as const } : null,
+    china?.isRestricted ? { icon: AlertTriangle, label: t("compare.restricted"), tone: "warn" as const } : null,
+    china?.isProhibited ? { icon: AlertTriangle, label: t("compare.prohibited"), tone: "warn" as const } : null,
   ].filter(Boolean) as { icon: typeof CheckCircle; label: string; tone: "good" | "warn" }[];
 
   const inFlags = [
     india?.dutyRate != null && india.dutyRate >= 15
-      ? { icon: AlertTriangle, label: "High BCD", tone: "warn" as const }
-      : { icon: CheckCircle, label: "BCD normal", tone: "good" as const },
-    india?.requiresLicence ? { icon: AlertTriangle, label: "Licence", tone: "warn" as const } : null,
-    india?.requiresInspection ? { icon: AlertTriangle, label: "Inspection", tone: "warn" as const } : null,
-    india?.isRestricted ? { icon: AlertTriangle, label: "Restricted", tone: "warn" as const } : null,
-    india?.isProhibited ? { icon: AlertTriangle, label: "Prohibited", tone: "warn" as const } : null,
+      ? { icon: AlertTriangle, label: t("compare.high.bcd"), tone: "warn" as const }
+      : { icon: CheckCircle, label: t("compare.normal.bcd"), tone: "good" as const },
+    india?.requiresLicence ? { icon: AlertTriangle, label: t("compare.licence"), tone: "warn" as const } : null,
+    india?.requiresInspection ? { icon: AlertTriangle, label: t("compare.inspection"), tone: "warn" as const } : null,
+    india?.isRestricted ? { icon: AlertTriangle, label: t("compare.restricted"), tone: "warn" as const } : null,
+    india?.isProhibited ? { icon: AlertTriangle, label: t("compare.prohibited"), tone: "warn" as const } : null,
   ].filter(Boolean) as { icon: typeof CheckCircle; label: string; tone: "good" | "warn" }[];
 
   return (
@@ -271,7 +273,7 @@ export function ComparisonView() {
       >
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Compare
+            {t("compare.label")}
           </p>
           <h1
             style={{
@@ -282,10 +284,10 @@ export function ComparisonView() {
               letterSpacing: "-0.01em",
             }}
           >
-            China and India, side by side.
+            {t("compare.title")}
           </h1>
           <p style={{ marginTop: 10, fontSize: 15, color: "var(--text-secondary)", maxWidth: 480, margin: "10px auto 0", lineHeight: 1.5 }}>
-            Type one code, compare both sides in a single view.
+            {t("compare.subtitle")}
           </p>
         </div>
 
@@ -307,7 +309,7 @@ export function ComparisonView() {
               className="input"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Enter HS code"
+              placeholder={t("compare.placeholder")}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -335,7 +337,7 @@ export function ComparisonView() {
                 borderRadius: "var(--radius-sm)",
               }}
             >
-              Compare
+              {t("compare.btn")}
             </button>
           </div>
         </div>
@@ -359,10 +361,10 @@ export function ComparisonView() {
         <div style={{ textAlign: "center", padding: "64px 0", color: "var(--text-muted)" }}>
           <Globe style={{ width: 40, height: 40, margin: "0 auto 12px", color: "var(--text-muted)" }} />
           <div style={{ fontWeight: 500, color: "var(--text-secondary)", fontSize: 15 }}>
-            Enter an HS code to compare both countries.
+            {t("compare.empty.title")}
           </div>
           <div style={{ marginTop: 6, fontSize: 13 }}>
-            Supports codes from both China and India.
+            {t("compare.empty.desc")}
           </div>
         </div>
       )}
@@ -379,36 +381,36 @@ export function ComparisonView() {
           >
             <SideCard
               title="CN"
-              country="China customs / 中国海关"
+              country={t("compare.cn.customs")}
               code={china?.hsCode}
               desc={china?.descriptionEn}
               sub={china?.descriptionLocal}
-              rateLabel="MFN duty"
+              rateLabel={t("compare.mfn")}
               duty={china?.dutyRate ?? null}
               secondary={china?.secondaryRate ?? null}
               extra={
                 china?.supervisoryConditions
-                  ? `Supervisory conditions: ${china.supervisoryConditions}`
-                  : "No supervisory conditions recorded"
+                  ? t("compare.supervisory.yes", { v: china.supervisoryConditions })
+                  : t("compare.supervisory.no")
               }
-              flags={cnFlags.length ? cnFlags : [{ icon: CheckCircle, label: "No flags", tone: "good" }]}
+              flags={cnFlags.length ? cnFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
             />
 
             <SideCard
               title="IN"
-              country="India customs / 印度海关"
+              country={t("compare.in.customs")}
               code={india?.hsCode}
               desc={india?.descriptionEn}
               sub={india?.descriptionLocal}
-              rateLabel="BCD"
+              rateLabel={t("compare.bcd")}
               duty={india?.dutyRate ?? null}
               secondary={india?.secondaryRate ?? null}
               extra={
                 india?.importPolicy
-                  ? `Import policy: ${india.importPolicy}`
-                  : "No import policy recorded"
+                  ? t("compare.policy.yes", { v: india.importPolicy })
+                  : t("compare.policy.no")
               }
-              flags={inFlags.length ? inFlags : [{ icon: CheckCircle, label: "No flags", tone: "good" }]}
+              flags={inFlags.length ? inFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
             />
           </div>
 
@@ -424,7 +426,7 @@ export function ComparisonView() {
                 }}
               >
                 <Shield style={{ width: 18, height: 18, color: "var(--accent)" }} />
-                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Match confidence</span>
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("compare.confidence")}</span>
                 <span
                   className="badge"
                   style={{

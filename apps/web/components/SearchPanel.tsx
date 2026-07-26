@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { CodeResult } from "../lib/shared-types";
 import { api } from "../lib/api";
+import { useTranslation } from "../lib/i18n";
 import { CodePopup } from "./CodePopup";
 import { Search, X } from "lucide-react";
 
@@ -58,6 +59,7 @@ function SkeletonCard() {
 export function SearchPanel() {
   const searchParams = useSearchParams();
   const initialQ = searchParams?.get("q") ?? "";
+  const { t } = useTranslation();
 
   const [q, setQ] = useState(initialQ);
   const [rows, setRows] = useState<CodeResult[]>([]);
@@ -164,7 +166,7 @@ export function SearchPanel() {
               letterSpacing: "-0.01em",
             }}
           >
-            Search HS Codes
+            {t("search.title")}
           </h1>
           <p
             style={{
@@ -176,7 +178,7 @@ export function SearchPanel() {
               lineHeight: 1.5,
             }}
           >
-            Start typing a code or product name. Pick a suggestion to open the full bilateral view.
+            {t("search.subtitle")}
           </p>
         </div>
 
@@ -211,7 +213,7 @@ export function SearchPanel() {
                   void executeSearch();
                 }
               }}
-              placeholder="Search HS code or product name..."
+              placeholder={t("search.placeholder")}
               style={{
                 paddingLeft: 46,
                 paddingRight: 90,
@@ -262,7 +264,7 @@ export function SearchPanel() {
                 borderRadius: "var(--radius-sm)",
               }}
             >
-              Search
+              {t("search.btn")}
             </button>
           </div>
 
@@ -339,7 +341,7 @@ export function SearchPanel() {
           }}
         >
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            {loading ? "Searching..." : searched ? `${rows.length} result${rows.length !== 1 ? "s" : ""}` : "Enter a query to search"}
+            {loading ? t("search.loading") : searched ? t("search.results", { n: rows.length }) : t("search.enter")}
           </span>
         </div>
 
@@ -435,9 +437,9 @@ export function SearchPanel() {
               fontSize: 15,
             }}
           >
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-            <div style={{ fontWeight: 500, color: "var(--text-secondary)" }}>No results found</div>
-            <div style={{ marginTop: 6, fontSize: 13 }}>Try a different HS code or product name</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>&#128269;</div>
+            <div style={{ fontWeight: 500, color: "var(--text-secondary)" }}>{t("search.empty.title")}</div>
+            <div style={{ marginTop: 6, fontSize: 13 }}>{t("search.empty.desc")}</div>
           </div>
         ) : !searched ? (
           <div
@@ -448,12 +450,12 @@ export function SearchPanel() {
               fontSize: 15,
             }}
           >
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>&#128230;</div>
             <div style={{ fontWeight: 500, color: "var(--text-secondary)" }}>
-              Search across 18,000+ HS codes
+              {t("search.hero.title")}
             </div>
             <div style={{ marginTop: 6, fontSize: 13 }}>
-              Supports codes from both China and India
+              {t("search.hero.desc")}
             </div>
           </div>
         ) : null}

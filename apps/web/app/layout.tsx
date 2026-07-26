@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { ThemeProvider } from "../components/ThemeProvider";
+import { I18nProvider } from "../lib/i18n";
 import { Header } from "../components/Header";
 import { ErrorCapture } from "../components/ErrorCapture";
 
@@ -19,9 +20,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange={false}
         >
-          <Header />
-          <div style={{ paddingTop: 64 }}>{children}</div>
-          <ErrorCapture />
+          <I18nProvider>
+            <Header />
+            <div style={{ paddingTop: 64 }}>{children}</div>
+            <ErrorCapture />
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

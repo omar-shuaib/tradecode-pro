@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CodeResult } from "../../../lib/shared-types";
 import { Search, X, Database, BarChart3, FileText, AlertTriangle, ChevronRight } from "lucide-react";
 import { api } from "../../../lib/api";
+import { useTranslation } from "../../../lib/i18n";
 import { cn } from "../../../lib/utils";
 import { CodePopup } from "../../../components/CodePopup";
 
@@ -41,6 +42,7 @@ function SkeletonCard() {
 
 export default function DatabasePage({ params }: Props) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [country, setCountry] = useState<"CN" | "IN">("CN");
   const [rows, setRows] = useState<CodeResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,13 +103,13 @@ export default function DatabasePage({ params }: Props) {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div className="space-y-1">
               <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--accent)" }}>
-                Database
+                {t("db.label")}
               </p>
               <h1 className="text-3xl font-bold" style={{ color: "var(--text)" }}>
-                {country === "CN" ? "China" : "India"} Explorer
+                {t("db.explorer", { country: country === "CN" ? t("common.china") : t("common.india") })}
               </h1>
               <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                Browse loaded HS codes, filter by chapter, and inspect duty details.
+                {t("db.desc")}
               </p>
             </div>
             <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}>
@@ -136,10 +138,10 @@ export default function DatabasePage({ params }: Props) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <span className="badge">{stats.total.toLocaleString()} rows</span>
-            <span className="badge badge-success">{chapters.length - 1} chapters</span>
-            <span className="badge badge-warning">{stats.highRate} high-duty</span>
-            <span className="badge badge-error">{stats.withNotes} flagged</span>
+            <span className="badge">{stats.total.toLocaleString()} {t("db.rows")}</span>
+            <span className="badge badge-success">{chapters.length - 1} {t("db.chapters")}</span>
+            <span className="badge badge-warning">{stats.highRate} {t("db.high.duty")}</span>
+            <span className="badge badge-error">{stats.withNotes} {t("db.flagged")}</span>
           </div>
         </section>
 
@@ -150,7 +152,7 @@ export default function DatabasePage({ params }: Props) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by HS code or description..."
+              placeholder={t("db.search.placeholder")}
               className="input pl-10 pr-10"
             />
             {query && (
@@ -171,7 +173,7 @@ export default function DatabasePage({ params }: Props) {
           <div className="flex items-center gap-2 mb-3">
             <FileText className="w-4 h-4" style={{ color: "var(--accent)" }} />
             <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-              Chapter filter
+              {t("db.chapter.filter")}
             </p>
             {chapter !== "All" && (
               <button
@@ -179,7 +181,7 @@ export default function DatabasePage({ params }: Props) {
                 onClick={() => setChapter("All")}
                 className="btn-ghost text-xs py-1 px-2"
               >
-                Clear
+                {t("db.chapter.clear")}
               </button>
             )}
           </div>
@@ -211,7 +213,7 @@ export default function DatabasePage({ params }: Props) {
             <div className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" style={{ color: "var(--accent)" }} />
               <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
-                {filtered.length.toLocaleString()} results
+                {t("db.results", { n: filtered.length.toLocaleString() })}
               </p>
             </div>
           </div>
@@ -226,10 +228,10 @@ export default function DatabasePage({ params }: Props) {
             <div className="card p-12 text-center space-y-3 animate-fade-in">
               <Database className="w-10 h-10 mx-auto" style={{ color: "var(--text-muted)" }} />
               <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-                No results found
+                {t("db.empty.title")}
               </p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Try adjusting your search or chapter filter.
+                {t("db.empty.desc")}
               </p>
             </div>
           ) : (
@@ -264,15 +266,15 @@ export default function DatabasePage({ params }: Props) {
 
                   <div className="flex items-center gap-2 flex-wrap mb-3">
                     <span className={cn("badge", dutyVariant(row.dutyRate))}>
-                      Duty: {dutyLabel(row.dutyRate)}
+                      {t("db.duty")}: {dutyLabel(row.dutyRate)}
                     </span>
                     {row.secondaryRate != null && (
                       <span className={cn("badge", dutyVariant(row.secondaryRate))}>
-                        SCD: {dutyLabel(row.secondaryRate)}
+                        {t("db.scd")}: {dutyLabel(row.secondaryRate)}
                       </span>
                     )}
                     <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      Ch. {row.chapter ?? "—"}
+                      Ch. {row.chapter ?? "\u2014"}
                     </span>
                   </div>
 
@@ -281,14 +283,14 @@ export default function DatabasePage({ params }: Props) {
                       <AlertTriangle className="w-3 h-3 shrink-0" style={{ color: "var(--warning)" }} />
                       {row.importPolicy && <span className="badge badge-warning text-[10px] py-0">{row.importPolicy}</span>}
                       {row.supervisoryConditions && <span className="badge badge-warning text-[10px] py-0">{row.supervisoryConditions}</span>}
-                      {row.isRestricted && <span className="badge badge-error text-[10px] py-0">Restricted</span>}
-                      {row.isProhibited && <span className="badge badge-error text-[10px] py-0">Prohibited</span>}
+                      {row.isRestricted && <span className="badge badge-error text-[10px] py-0">{t("db.restricted")}</span>}
+                      {row.isProhibited && <span className="badge badge-error text-[10px] py-0">{t("db.prohibited")}</span>}
                     </div>
                   )}
 
                   <div className="flex items-center justify-end mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <span className="text-xs font-medium flex items-center gap-1" style={{ color: "var(--accent)" }}>
-                      View details
+                      {t("db.view.details")}
                       <ChevronRight className="w-3 h-3" />
                     </span>
                   </div>

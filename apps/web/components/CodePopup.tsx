@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X, CheckCircle, AlertTriangle, Shield, Calculator, Globe } from "lucide-react";
 import { api } from "../lib/api";
+import { useTranslation } from "../lib/i18n";
 import { cn } from "../lib/utils";
 import { CompliancePanel } from "./CompliancePanel";
 import { DutyDisclaimer } from "./DutyDisclaimer";
@@ -91,9 +92,9 @@ function FlagChip({ label, tone }: { label: string; tone: "good" | "warn" | "bad
   );
 }
 
-function Panel({ side }: { side: CountrySide }) {
+function Panel({ side, t }: { side: CountrySide; t: (key: any, params?: Record<string, string | number>) => string }) {
   const sideLabel =
-    side.country === "CN" ? "CHINA CUSTOMS / 中国海关" : "INDIA CUSTOMS / 印度海关";
+    side.country === "CN" ? t("popup.cn.customs") : t("popup.in.customs");
   const totalIncidence =
     side.dutyRate != null && side.secondaryRate != null
       ? (Number(side.dutyRate) + Number(side.secondaryRate)).toFixed(1)
@@ -101,28 +102,28 @@ function Panel({ side }: { side: CountrySide }) {
 
   const flags: { label: string; tone: "good" | "warn" | "bad" }[] = [];
 
-  if (side.isProhibited) flags.push({ label: "Prohibited", tone: "bad" });
-  if (side.isRestricted) flags.push({ label: "Restricted", tone: "warn" });
-  if (side.requiresLicence) flags.push({ label: "Licence required", tone: "warn" });
+  if (side.isProhibited) flags.push({ label: t("popup.prohibited"), tone: "bad" });
+  if (side.isRestricted) flags.push({ label: t("popup.restricted"), tone: "warn" });
+  if (side.requiresLicence) flags.push({ label: t("popup.licence"), tone: "warn" });
   if (side.requiresInspection)
     flags.push({
-      label: `Inspection${side.inspectionAgency ? `: ${side.inspectionAgency}` : ""}`,
+      label: side.inspectionAgency ? `${t("popup.inspection")}: ${side.inspectionAgency}` : t("popup.inspection"),
       tone: "warn",
     });
-  if (side.importPolicy) flags.push({ label: `Policy: ${side.importPolicy}`, tone: "warn" });
+  if (side.importPolicy) flags.push({ label: `${t("popup.policy")}: ${side.importPolicy}`, tone: "warn" });
   if (side.supervisoryConditions)
-    flags.push({ label: `Supervisory: ${side.supervisoryConditions}`, tone: "warn" });
+    flags.push({ label: `${t("popup.supervisory")}: ${side.supervisoryConditions}`, tone: "warn" });
 
   const dutyHigh = side.country === "CN" ? 12 : 15;
   const secondaryHigh = side.country === "CN" ? 13 : 10;
 
   if (side.dutyRate != null && side.dutyRate >= dutyHigh)
-    flags.push({ label: side.country === "CN" ? "High MFN" : "High BCD", tone: "warn" });
+    flags.push({ label: side.country === "CN" ? t("popup.high.mfn") : t("popup.high.bcd"), tone: "warn" });
   if (side.secondaryRate != null && side.secondaryRate >= secondaryHigh)
-    flags.push({ label: side.country === "CN" ? "High VAT" : "High IGST", tone: "warn" });
+    flags.push({ label: side.country === "CN" ? t("popup.high.vat") : t("popup.high.igst"), tone: "warn" });
 
   if (flags.length === 0)
-    flags.push({ label: "No special flags", tone: "good" });
+    flags.push({ label: t("popup.no.flags"), tone: "good" });
 
   return (
     <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -150,7 +151,7 @@ function Panel({ side }: { side: CountrySide }) {
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 2 }}>
             <span style={{ color: "var(--text-muted)" }}>
-              {side.country === "CN" ? "MFN duty" : "BCD"}
+              {side.country === "CN" ? t("popup.mfn") : t("popup.bcd")}
             </span>
             <span
               style={{
@@ -169,7 +170,7 @@ function Panel({ side }: { side: CountrySide }) {
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 2 }}>
             <span style={{ color: "var(--text-muted)" }}>
-              {side.country === "CN" ? "Import VAT / 增值税" : "SWS (10% of BCD)"}
+              {side.country === "CN" ? t("popup.vat") : t("popup.sws")}
             </span>
             <span
               style={{
@@ -204,7 +205,7 @@ function Panel({ side }: { side: CountrySide }) {
             color: "var(--text-secondary)",
           }}
         >
-          Total incidence / 综合税负 ~{totalIncidence}%
+          {t("popup.total.incidence", { v: totalIncidence })}
         </div>
       )}
     </div>
@@ -236,6 +237,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
   const [error, setError] = useState<string | null>(null);
   const [cif, setCif] = useState(10000);
   const [dutyResult, setDutyResult] = useState<any>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     let active = true;
@@ -385,7 +387,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
           <AlertTriangle style={{ width: 40, height: 40, color: "var(--error)", margin: "0 auto 12px" }} />
           <p style={{ fontSize: 15, color: "var(--text-secondary)" }}>{error}</p>
           <button className="btn-primary" onClick={onClose} style={{ marginTop: 16 }}>
-            Close
+            {t("popup.close")}
           </button>
         </div>
       </div>
@@ -478,22 +480,22 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
           className="detail-split-responsive"
         >
           {china ? (
-            <Panel side={china} />
+            <Panel side={china} t={t} />
           ) : (
             <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
               <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
               <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
-                No China record for this code.
+                {t("popup.no.china")}
               </p>
             </div>
           )}
           {india ? (
-            <Panel side={india} />
+            <Panel side={india} t={t} />
           ) : (
             <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
               <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
               <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
-                No India record for this code.
+                {t("popup.no.india")}
               </p>
             </div>
           )}
@@ -505,13 +507,13 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                 <Calculator style={{ width: 18, height: 18, color: "var(--accent)" }} />
                 <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
-                  Duty Calculator
+                  {t("popup.calculator")}
                 </span>
               </div>
 
               <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 200px" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>CIF (USD)</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{t("popup.cif")}</span>
                   <input
                     className="input"
                     type="number"
@@ -521,7 +523,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                   />
                 </label>
                 <button className="btn-secondary" type="button" onClick={() => setCif(10000)} style={{ height: 40 }}>
-                  Reset
+                  {t("popup.reset")}
                 </button>
               </div>
 
@@ -537,7 +539,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                   >
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                        India duty breakdown
+                        {t("popup.india.breakdown")}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                         {indiaDuty?.map((line, i) => (
@@ -569,7 +571,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                           alignItems: "center",
                         }}
                       >
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Landed cost</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>{t("popup.landed.cost")}</span>
                         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "var(--accent)" }}>
                           {Number(dutyResult.landedCost).toFixed(2)} USD
                         </span>
@@ -585,21 +587,21 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
                             textAlign: "center",
                           }}
                         >
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Total incidence</div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{t("popup.total")}</div>
                           <div style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>
                             ~{totalIncidence.toFixed(1)}%
                           </div>
                         </div>
                       )}
                       <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                        Reference FX: 1 USD = {dutyResult.exchangeRate} {dutyResult.currency}, effective {dutyResult.effectiveDate}
+                        {t("popup.fx", { rate: dutyResult.exchangeRate, currency: dutyResult.currency, date: dutyResult.effectiveDate })}
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <p style={{ marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
-                  Duty calculation will appear once the India side is available.
+                  {t("popup.duty.note")}
                 </p>
               )}
             </div>

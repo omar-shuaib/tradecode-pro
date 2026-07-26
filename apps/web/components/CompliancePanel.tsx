@@ -1,7 +1,7 @@
 "use client";
 
 import { Shield, CheckCircle, AlertTriangle, XCircle, Flag } from "lucide-react";
-import { cn } from "../lib/utils";
+import { useTranslation } from "../lib/i18n";
 
 type Code = {
   country: "CN" | "IN";
@@ -61,45 +61,46 @@ function FlagChip({
 }
 
 export function CompliancePanel({ code }: { code: Code }) {
+  const { t } = useTranslation();
   const flags: { icon: typeof CheckCircle; label: string; tone: "good" | "warn" | "bad" }[] = [];
 
   if (code.isProhibited) {
-    flags.push({ icon: XCircle, label: "Prohibited", tone: "bad" });
+    flags.push({ icon: XCircle, label: t("compliance.prohibited"), tone: "bad" });
   }
 
   if (code.isRestricted) {
-    flags.push({ icon: AlertTriangle, label: "Restricted", tone: "warn" });
+    flags.push({ icon: AlertTriangle, label: t("compliance.restricted"), tone: "warn" });
   }
 
   if (code.requiresLicence) {
-    flags.push({ icon: AlertTriangle, label: "Licence required", tone: "warn" });
+    flags.push({ icon: AlertTriangle, label: t("compliance.licence"), tone: "warn" });
   }
 
   if (code.requiresInspection) {
     flags.push({
       icon: AlertTriangle,
-      label: `Inspection required${code.inspectionAgency ? `: ${code.inspectionAgency}` : ""}`,
+      label: code.inspectionAgency ? `${t("compliance.inspection")}: ${code.inspectionAgency}` : t("compliance.inspection"),
       tone: "warn",
     });
   }
 
   if (code.importPolicy) {
-    flags.push({ icon: Flag, label: `Import policy: ${code.importPolicy}`, tone: "warn" });
+    flags.push({ icon: Flag, label: `${t("compliance.policy")}: ${code.importPolicy}`, tone: "warn" });
   }
 
   if (code.supervisoryConditions) {
-    flags.push({ icon: Flag, label: `Supervisory: ${code.supervisoryConditions}`, tone: "warn" });
+    flags.push({ icon: Flag, label: `${t("compliance.supervisory")}: ${code.supervisoryConditions}`, tone: "warn" });
   }
 
   if (flags.length === 0) {
-    flags.push({ icon: CheckCircle, label: "All clear", tone: "good" });
+    flags.push({ icon: CheckCircle, label: t("compliance.clear"), tone: "good" });
   }
 
   return (
     <div className="card" style={{ padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
         <Shield style={{ width: 18, height: 18, color: "var(--accent)" }} />
-        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>Compliance</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{t("compliance.title")}</span>
         <span
           className="badge"
           style={{

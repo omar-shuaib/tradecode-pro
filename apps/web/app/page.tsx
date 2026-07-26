@@ -3,32 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Search, Brain, ArrowLeftRight, Database } from "lucide-react";
+import { Search, Brain, ArrowLeftRight } from "lucide-react";
+import { useTranslation } from "../lib/i18n";
 
-const FEATURES = [
-  {
-    href: "/search",
-    icon: Search,
-    title: "Search HS Codes",
-    desc: "Look up any HS code across China and India tariff databases",
-  },
-  {
-    href: "/classify",
-    icon: Brain,
-    title: "AI Classification",
-    desc: "Describe a product in any language and get matched HS codes",
-  },
-  {
-    href: "/compare",
-    icon: ArrowLeftRight,
-    title: "Bilateral Compare",
-    desc: "Compare duties and regulations between China and India",
-  },
+const FEATURE_KEYS = [
+  { href: "/search", icon: Search, titleKey: "home.feature.search.title" as const, descKey: "home.feature.search.desc" as const },
+  { href: "/classify", icon: Brain, titleKey: "home.feature.classify.title" as const, descKey: "home.feature.classify.desc" as const },
+  { href: "/compare", icon: ArrowLeftRight, titleKey: "home.feature.compare.title" as const, descKey: "home.feature.compare.desc" as const },
 ] as const;
 
 export default function Home() {
   const [query, setQuery] = useState("");
   const router = useRouter();
+  const { t } = useTranslation();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +45,7 @@ export default function Home() {
             margin: 0,
           }}
         >
-          Find. Compare. Classify.
+          {t("home.hero")}
         </h1>
         <p
           style={{
@@ -69,7 +56,7 @@ export default function Home() {
             lineHeight: 1.6,
           }}
         >
-          Free HS code search and bilateral trade comparison for China and India
+          {t("home.subtitle")}
         </p>
 
         <form
@@ -97,7 +84,7 @@ export default function Home() {
             className="input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by HS code or product name..."
+            placeholder={t("home.search.placeholder")}
             style={{
               paddingLeft: 46,
               paddingRight: 110,
@@ -119,7 +106,7 @@ export default function Home() {
               borderRadius: "var(--radius-sm)",
             }}
           >
-            Search
+            {t("home.search.btn")}
           </button>
         </form>
       </section>
@@ -132,7 +119,7 @@ export default function Home() {
           marginTop: 16,
         }}
       >
-        {FEATURES.map(({ href, icon: Icon, title, desc }, i) => (
+        {FEATURE_KEYS.map(({ href, icon: Icon, titleKey, descKey }, i) => (
           <Link
             key={href}
             href={href}
@@ -161,9 +148,9 @@ export default function Home() {
               <Icon style={{ width: 22, height: 22, color: "var(--accent)" }} />
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{title}</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)" }}>{t(titleKey)}</div>
               <p style={{ margin: "6px 0 0", fontSize: 14, lineHeight: 1.5, color: "var(--text-secondary)" }}>
-                {desc}
+                {t(descKey)}
               </p>
             </div>
           </Link>
@@ -182,14 +169,14 @@ export default function Home() {
         }}
       >
         {[
-          { value: "18,000+", label: "HS codes" },
-          { value: "2", label: "countries" },
-          { value: "Free & open", label: "" },
-        ].map(({ value, label }) => (
+          { value: "25,000+", labelKey: "home.stat.codes" as const },
+          { value: "2", labelKey: "home.stat.countries" as const },
+          { value: "Free & open", labelKey: "" as const },
+        ].map(({ value, labelKey }) => (
           <div key={value} style={{ textAlign: "center" }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: "var(--accent)" }}>{value}</div>
-            {label && (
-              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{label}</div>
+            {labelKey && (
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{t(labelKey)}</div>
             )}
           </div>
         ))}
