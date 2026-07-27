@@ -691,6 +691,87 @@ app.get("/api/v1/sections/:country", async (req, res) => {
   res.json(sections);
 });
 
+async function findClosestMatch(
+  sourceCode: string,
+  sourceDesc: string,
+  sourceChapter: string,
+  targetCountry: "CN" | "IN" | "AE",
+): Promise<{ hsCode: string; descriptionEn: string; descriptionLocal?: string; chapter: string; dutyRate: number | null; secondaryRate: number | null; confidence: number } | null> {
+  const sourcePrefix4 = sourceCode.substring(0, 4);
+
+  type Candidate = { hsCode: string; descriptionEn: string; descriptionLocal: string; chapter: string; dutyRate: number | null; secondaryRate: number | null };
+
+  async function fetchCandidates(whereClause: any, take: number): Promise<Candidate[]> {
+    if (targetCountry === "CN") {
+      const rows = await db.chinaHsCode.findMany({ where: whereClause, take });
+      return rows.map(r => ({
+        hsCode: r.hsCode8, descriptionEn: r.descriptionEn, descriptionLocal: r.descriptionZh,
+        chapter: r.chapter, dutyRate: r.mfnDutyRate ? Number(r.mfnDutyRate) : null,
+        secondaryRate: r.vatRate ? Number(r.vatRate) : null,
+      }));
+    } else if (targetCountry === "IN") {
+      const rows = await db.indiaHsCode.findMany({ where: whereClause, take });
+      return rows.map(r => ({
+        hsCode: r.hsCode, descriptionEn: r.descriptionEn, descriptionLocal: r.descriptionHi ?? "",
+        chapter: r.chapter, dutyRate: r.bcdRate ? Number(r.bcdRate) : null,
+        secondaryRate: r.igstRate ? Number(r.igstRate) : null,
+      }));
+    } else {
+      const rows = await db.uaeHsCode.findMany({ where: whereClause, take });
+      return rows.map(r => ({
+        hsCode: r.hsCode, descriptionEn: r.descriptionEn, descriptionLocal: r.descriptionAr ?? "",
+        chapter: r.chapter, dutyRate: Number(r.customsDutyRate), secondaryRate: Number(r.vatRate),
+      }));
+    }
+  }
+
+  function codeField(): string {
+    return targetCountry === "CN" ? "hsCode8" : "hsCode";
+  }
+
+  const prefixCandidates = await fetchCandidates({
+    chapter: sourceChapter,
+    [codeField()]: { startsWith: sourcePrefix4 },
+  }, 20);
+
+  if (prefixCandidates.length > 0) {
+    const best = prefixCandidates[0];
+    const exactCount = prefixCandidates.filter(c => c.hsCode.substring(0, 6) === sourceCode.substring(0, 6)).length;
+    const confidence = exactCount > 0 ? 85 : 70;
+    return { ...best, confidence };
+  }
+
+  const chapterCandidates = await fetchCandidates({ chapter: sourceChapter }, 300);
+
+  if (!chapterCandidates.length) return null;
+
+  const sourceWords = sourceDesc
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(t => t.length >= 3 && !/^\d+$/.test(t))
+    .slice(0, 12);
+
+  const scored = chapterCandidates.map(c => {
+    const cLower = c.descriptionEn.toLowerCase();
+    const exactWords = sourceWords.filter(t => cLower.includes(t)).length;
+    const partialWords = sourceWords.filter(t =>
+      cLower.split(/\s+/).some(ct => ct.includes(t) || t.includes(ct))
+    ).length;
+    const wordScore = Math.max(exactWords, partialWords) / Math.max(sourceWords.length, 1);
+    return { ...c, score: wordScore };
+  }).sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  if (best.score < 0.15) return null;
+
+  const confidence = Math.min(65, Math.round(best.score * 100));
+  return {
+    hsCode: best.hsCode, descriptionEn: best.descriptionEn, descriptionLocal: best.descriptionLocal,
+    chapter: best.chapter, dutyRate: best.dutyRate, secondaryRate: best.secondaryRate, confidence,
+  };
+}
+
 app.get("/api/v1/match/:code", async (req, res) => {
   const code = req.params.code;
 
@@ -763,7 +844,35 @@ app.get("/api/v1/match/:code", async (req, res) => {
   }
 
   const confidence = china && india ? 0.95 : china || india || uae ? 0.6 : 0;
-  res.json([{ id: 1, matchConfidence: confidence, matchMethod: china && india ? "exact-bilateral" : "single-country", china, india, uae }]);
+
+  const sourceDesc = (china?.descriptionEn ?? india?.descriptionEn ?? uae?.descriptionEn ?? "").trim();
+  const sourceChapter = code.substring(0, 2);
+
+  let closestChina = null;
+  let closestIndia = null;
+  let closestUae = null;
+
+  if (!china && sourceDesc && sourceChapter) {
+    closestChina = await findClosestMatch(code, sourceDesc, sourceChapter, "CN");
+  }
+  if (!india && sourceDesc && sourceChapter) {
+    closestIndia = await findClosestMatch(code, sourceDesc, sourceChapter, "IN");
+  }
+  if (!uae && sourceDesc && sourceChapter) {
+    closestUae = await findClosestMatch(code, sourceDesc, sourceChapter, "AE");
+  }
+
+  res.json([{
+    id: 1,
+    matchConfidence: confidence,
+    matchMethod: china && india ? "exact-bilateral" : "single-country",
+    china,
+    india,
+    uae,
+    closestChina,
+    closestIndia,
+    closestUae,
+  }]);
 });
 
 app.post("/api/v1/duty-calculate", async (req, res) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, CheckCircle, AlertTriangle, Shield, Calculator, Globe } from "lucide-react";
+import { X, CheckCircle, AlertTriangle, Shield, Calculator, Globe, Info } from "lucide-react";
 import { api } from "../lib/api";
 import { useTranslation } from "../lib/i18n";
 import { cn } from "../lib/utils";
@@ -28,6 +28,33 @@ type MatchRow = {
   china: CountrySide | null;
   india: CountrySide | null;
   uae: CountrySide | null;
+  closestChina?: {
+    hsCode: string;
+    descriptionEn: string;
+    descriptionLocal?: string;
+    chapter: string;
+    dutyRate: number | null;
+    secondaryRate: number | null;
+    confidence: number;
+  } | null;
+  closestIndia?: {
+    hsCode: string;
+    descriptionEn: string;
+    descriptionLocal?: string;
+    chapter: string;
+    dutyRate: number | null;
+    secondaryRate: number | null;
+    confidence: number;
+  } | null;
+  closestUae?: {
+    hsCode: string;
+    descriptionEn: string;
+    descriptionLocal?: string;
+    chapter: string;
+    dutyRate: number | null;
+    secondaryRate: number | null;
+    confidence: number;
+  } | null;
 };
 
 type DutyLine = { label: string; amount: number };
@@ -90,6 +117,109 @@ function FlagChip({ label, tone }: { label: string; tone: "good" | "warn" | "bad
       )}
       {label}
     </span>
+  );
+}
+
+function ClosestMatchPanel({
+  match,
+  country,
+  t,
+}: {
+  match: NonNullable<MatchRow["closestChina"]>;
+  country: string;
+  t: (key: any, params?: Record<string, string | number>) => string;
+}) {
+  const confColor = match.confidence >= 70 ? "var(--success)" : match.confidence >= 40 ? "var(--warning)" : "var(--error)";
+  const confLabel = match.confidence >= 70 ? t("compare.closest.high") : match.confidence >= 40 ? t("compare.closest.medium") : t("compare.closest.low");
+  const sideLabel = country === "CN" ? t("popup.cn.customs") : country === "IN" ? t("popup.in.customs") : t("popup.ae.customs");
+
+  return (
+    <div
+      className="card"
+      style={{
+        padding: 24,
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+        border: "2px dashed var(--warning)",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: -12,
+          left: 16,
+          backgroundColor: "var(--warning-light)",
+          color: "var(--warning)",
+          fontSize: 10,
+          fontWeight: 700,
+          padding: "2px 10px",
+          borderRadius: 9999,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+        }}
+      >
+        {t("compare.closest.label")}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Info style={{ width: 16, height: 16, color: "var(--warning)" }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {sideLabel}
+        </span>
+      </div>
+
+      <div style={{ fontFamily: "monospace", fontSize: 22, fontWeight: 700, color: "var(--text)" }}>
+        {match.hsCode}
+      </div>
+
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--text-secondary)" }}>
+        {match.descriptionEn}
+      </p>
+      {match.descriptionLocal && (
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+          {match.descriptionLocal}
+        </p>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-muted)" }}>
+          <span>{t("compare.closest.confidence")}</span>
+          <span style={{ fontWeight: 600, color: confColor }}>{match.confidence}% — {confLabel}</span>
+        </div>
+        <div
+          style={{
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: "var(--bg-elevated)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${match.confidence}%`,
+              backgroundColor: confColor,
+              borderRadius: 3,
+              transition: "width 0.4s ease",
+            }}
+          />
+        </div>
+      </div>
+
+      <p
+        style={{
+          margin: 0,
+          fontSize: 11,
+          lineHeight: 1.5,
+          color: "var(--text-muted)",
+          fontStyle: "italic",
+        }}
+      >
+        {t("compare.closest.disclaimer")}
+      </p>
+    </div>
   );
 }
 
@@ -503,7 +633,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: china && india && uae ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
+            gridTemplateColumns: "repeat(3, 1fr)",
             gap: 20,
             padding: 20,
           }}
@@ -511,6 +641,8 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
         >
           {china ? (
             <Panel side={china} t={t} />
+          ) : match?.closestChina ? (
+            <ClosestMatchPanel match={match.closestChina} country="CN" t={t} />
           ) : (
             <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
               <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
@@ -521,6 +653,8 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
           )}
           {india ? (
             <Panel side={india} t={t} />
+          ) : match?.closestIndia ? (
+            <ClosestMatchPanel match={match.closestIndia} country="IN" t={t} />
           ) : (
             <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
               <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
@@ -531,6 +665,8 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
           )}
           {uae ? (
             <Panel side={uae} t={t} />
+          ) : match?.closestUae ? (
+            <ClosestMatchPanel match={match.closestUae} country="AE" t={t} />
           ) : (
             <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
               <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
