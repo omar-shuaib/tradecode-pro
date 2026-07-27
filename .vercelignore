@@ -1,0 +1,12 @@
+node_modules
+.turbo
+data/
+tmp-*
+.vercel
+coverage
+.git
+.github
+infrastructure
+scripts
+apps/api
+apps/web/node_modules
