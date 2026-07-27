@@ -123,7 +123,7 @@ export default function ClassifyPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const samples = [
     t("classify.sample.electric"),
@@ -389,7 +389,7 @@ export default function ClassifyPage() {
                                   gridColumn: "1 / -1",
                                 }}
                               >
-                                {item.descriptionEn}
+                                {locale === "zh" && item.descriptionLocal ? item.descriptionLocal : item.descriptionEn}
                               </p>
 
                               {/* Row 3: Confidence Bar */}

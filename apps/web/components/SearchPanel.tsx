@@ -65,7 +65,7 @@ function SkeletonCard() {
 export function SearchPanel() {
   const searchParams = useSearchParams();
   const initialQ = searchParams?.get("q") ?? "";
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const [q, setQ] = useState(initialQ);
   const [rows, setRows] = useState<CodeResult[]>([]);
@@ -329,7 +329,7 @@ export function SearchPanel() {
                       fontSize: 13,
                     }}
                   >
-                    {item.descriptionEn}
+                    {locale === "zh" && item.descriptionLocal ? item.descriptionLocal : item.descriptionEn}
                   </span>
                 </button>
               ))}
@@ -414,9 +414,23 @@ export function SearchPanel() {
                       WebkitBoxOrient: "vertical",
                     }}
                   >
-                    {primary.descriptionEn}
+                    {locale === "zh" && primary.descriptionLocal ? primary.descriptionLocal : primary.descriptionEn}
                   </p>
-                  {primary.descriptionLocal && (
+                  {locale === "zh" && primary.descriptionLocal && (
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        color: "var(--text-muted)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {primary.descriptionEn}
+                    </p>
+                  )}
+                  {locale !== "zh" && primary.descriptionLocal && (
                     <p
                       style={{
                         margin: 0,

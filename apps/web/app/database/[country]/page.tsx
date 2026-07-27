@@ -42,7 +42,7 @@ function SkeletonCard() {
 
 export default function DatabasePage({ params }: Props) {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [country, setCountry] = useState<"CN" | "IN" | "AE">("CN");
 
   const [rows, setRows] = useState<CodeResult[]>([]);
@@ -315,9 +315,14 @@ export default function DatabasePage({ params }: Props) {
                   </div>
 
                   <p className="text-sm mb-1 line-clamp-2" style={{ color: "var(--text-secondary)" }}>
-                    {row.descriptionEn}
+                    {locale === "zh" && row.descriptionLocal ? row.descriptionLocal : row.descriptionEn}
                   </p>
-                  {row.descriptionLocal && (
+                  {locale === "zh" && row.descriptionLocal && (
+                    <p className="text-xs mb-3 line-clamp-1" style={{ color: "var(--text-muted)" }}>
+                      {row.descriptionEn}
+                    </p>
+                  )}
+                  {locale !== "zh" && row.descriptionLocal && (
                     <p className="text-xs mb-3 line-clamp-1" style={{ color: "var(--text-muted)" }}>
                       {row.descriptionLocal}
                     </p>

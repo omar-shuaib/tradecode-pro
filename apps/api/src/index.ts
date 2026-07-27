@@ -295,12 +295,23 @@ function scoreMatch(
   codeChapter?: string,
   queryChapters?: string[],
 ): number {
+  const qLower = query.toLowerCase().trim();
+
+  // Tier 0: HS code match (query is all digits, 4-10 chars)
+  if (/^\d{4,10}$/.test(qLower)) {
+    // candidate = "hsCode description..."
+    const codePart = candidate.split(/\s/)[0]?.toLowerCase() ?? "";
+    if (codePart === qLower) return 1.0;
+    if (codePart.startsWith(qLower)) return 0.95;
+    if (codePart.substring(0, 4) === qLower.substring(0, 4)) return 0.70;
+    // Still allow description fallback for code queries
+  }
+
   const qTokens = tokenize(query);
   const cTokens = tokenize(candidate);
   if (!qTokens.length || !cTokens.length) return 0;
 
   const cLower = candidate.toLowerCase();
-  const qLower = query.toLowerCase().trim();
   const candidateSet = new Set(cTokens);
 
   const chapterBoost = (queryChapters && codeChapter)
