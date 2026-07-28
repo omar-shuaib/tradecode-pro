@@ -181,7 +181,7 @@ export default function DatabasePage({ params }: Props) {
         </section>
 
         {/* Search + Sort row */}
-        <section className="card p-4 animate-slide-up">
+        <section style={{ padding: 16, background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-sm)" }} className="animate-slide-up">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
@@ -289,7 +289,7 @@ export default function DatabasePage({ params }: Props) {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="card p-12 text-center space-y-3 animate-fade-in">
+            <div style={{ padding: 48, textAlign: "center", display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-sm)" }} className="animate-fade-in">
               <Database className="w-10 h-10 mx-auto" style={{ color: "var(--text-muted)" }} />
               <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
                 {t("db.empty.title")}
@@ -301,10 +301,13 @@ export default function DatabasePage({ params }: Props) {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {rows.map((row, idx) => (
-                <article
+                <div
                   key={`${row.country}-${row.hsCode}-${idx}`}
-                  className="card p-4 cursor-pointer group animate-slide-up"
+                  className="animate-slide-up"
                   style={{ animationDelay: `${Math.min(idx * 15, 200)}ms` }}
+                >
+                <article
+                  className="card p-4 cursor-pointer group"
                   onClick={() => setSelected(row.hsCode)}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -359,6 +362,7 @@ export default function DatabasePage({ params }: Props) {
                     </span>
                   </div>
                 </article>
+                </div>
               ))}
             </div>
           )}

@@ -242,7 +242,7 @@ export default function ClassifyPage() {
         </div>
       </section>
 
-      <section className="card" style={{ padding: 24, display: "grid", gap: 14 }}>
+      <section style={{ padding: 24, display: "grid", gap: 14, background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-sm)" }}>
         <textarea
           className="input"
           value={description}
