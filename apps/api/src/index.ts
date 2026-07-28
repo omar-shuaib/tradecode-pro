@@ -418,9 +418,11 @@ app.get("/api/v1/search", async (req, res) => {
   try {
     const results = await search.search(q, country, 20);
     db.searchLog.create({ data: { query: q, country, resultCount: results.length } }).catch(() => {});
+    res.set("X-Search-Provider", "postgres").set("X-Result-Count", String(results.length));
     res.json({ results, total: results.length });
-  } catch {
+  } catch (err: any) {
     const results = await fallbackSearch(q, country, 20);
+    res.set("X-Search-Provider", "fallback").set("X-Result-Count", String(results.length)).set("X-Search-Error", err?.message?.substring(0, 200) ?? "unknown");
     res.json({ results, total: results.length });
   }
 });
