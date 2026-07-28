@@ -417,7 +417,7 @@ app.get("/api/v1/search", async (req, res) => {
 
   try {
     const results = await search.search(q, country, 20);
-    await db.searchLog.create({ data: { query: q, country, resultCount: results.length } });
+    db.searchLog.create({ data: { query: q, country, resultCount: results.length } }).catch(() => {});
     res.json({ results, total: results.length });
   } catch {
     const results = await fallbackSearch(q, country, 20);
