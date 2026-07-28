@@ -42,39 +42,39 @@ function buildScoreSql(
       WHEN lower(${col}) = lower(${p}) THEN 0.85
       WHEN position(lower(${p}) IN lower(${col})) > 0 THEN 0.80
       WHEN (
-        SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
         WHERE word ~* '^[a-z0-9]+$' AND lower(${col}) LIKE '%' || word || '%'
       ) = (
-        SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
         WHERE word ~* '^[a-z0-9]+$'
       )
       AND (
-        SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
         WHERE word ~* '^[a-z0-9]+$'
       ) > 0
       THEN 0.65 + (0.20 * LEAST(
-        (SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        (SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
          WHERE word ~* '^[a-z0-9]+$' AND lower(${col}) LIKE '%' || word || '%')
         ::float /
-        GREATEST((SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        GREATEST((SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
          WHERE word ~* '^[a-z0-9]+$'), 1)
       , 1.0))
       WHEN (
-        SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
         WHERE word ~* '^[a-z0-9]+$' AND lower(${col}) LIKE '%' || word || '%'
       ) >= (
-        SELECT count(*) * 0.5 FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        SELECT count(*)::int * 0.5 FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
         WHERE word ~* '^[a-z0-9]+$'
       )
       AND (
-        SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
         WHERE word ~* '^[a-z0-9]+$'
       ) > 0
       THEN 0.35 + (0.30 * LEAST(
-        (SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        (SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
          WHERE word ~* '^[a-z0-9]+$' AND lower(${col}) LIKE '%' || word || '%')
         ::float /
-        GREATEST((SELECT count(*) FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
+        GREATEST((SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
          WHERE word ~* '^[a-z0-9]+$'), 1)
       , 1.0))
       ELSE similarity(${col}, ${p})
