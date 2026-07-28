@@ -131,8 +131,8 @@ function SideCard({
         <span
           className="badge"
           style={{
-            backgroundColor: title === "CN" ? "var(--warning-light)" : title === "IN" ? "var(--success-light)" : "var(--info-light, #e0f2fe)",
-            color: title === "CN" ? "var(--warning)" : title === "IN" ? "var(--success)" : "#0284c7",
+            backgroundColor: title === "CN" ? "var(--warning-light)" : title === "IN" ? "var(--success-light)" : "var(--country-ae-bg)",
+            color: title === "CN" ? "var(--warning)" : title === "IN" ? "var(--success)" : "var(--country-ae-text)",
             fontSize: 12,
             fontWeight: 600,
           }}

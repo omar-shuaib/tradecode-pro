@@ -153,7 +153,7 @@ export default function ClassifyPage() {
   const countryMeta: Record<string, { label: string; color: string; bg: string }> = {
     CN: { label: "China", color: "var(--warning)", bg: "var(--warning-light)" },
     IN: { label: "India", color: "var(--success)", bg: "var(--success-light)" },
-    AE: { label: "UAE", color: "#0284c7", bg: "#e0f2fe" },
+    AE: { label: "UAE", color: "var(--country-ae-text)", bg: "var(--country-ae-bg)" },
   };
 
   return (

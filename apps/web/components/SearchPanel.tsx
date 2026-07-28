@@ -12,7 +12,7 @@ function CountryBadge({ country }: { country: string }) {
   const colorMap: Record<string, { bg: string; fg: string }> = {
     CN: { bg: "var(--warning-light)", fg: "var(--warning)" },
     IN: { bg: "var(--success-light)", fg: "var(--success)" },
-    AE: { bg: "#e0f2fe", fg: "#0284c7" },
+    AE: { bg: "var(--country-ae-bg)", fg: "var(--country-ae-text)" },
   };
   const c = colorMap[country] ?? { bg: "var(--bg-elevated)", fg: "var(--text-muted)" };
   return (

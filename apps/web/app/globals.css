@@ -1,98 +1,166 @@
 @import "tailwindcss";
 
 /* ============================================
-   TradeCode Pro — Glassmorphism Design System
+   TradeCode Pro — "Sage & Linen" Design System
    ============================================ */
 
 /* --------------------------------------------
    1. CSS Custom Properties — Light Mode
    -------------------------------------------- */
 :root {
-  /* Background — warm beige with glass layers */
-  --bg: #e8e0d8;
-  --bg-card: rgba(255, 252, 249, 0.62);
-  --bg-elevated: rgba(255, 252, 249, 0.45);
-  --bg-input: rgba(255, 252, 249, 0.7);
+  /* Background */
+  --bg-base: #F2F4F0;
+  --bg-surface: #E8EDE4;
+  --bg-raised: #DDE4D8;
+  --bg-input: #E8EDE4;
+
+  /* Borders */
+  --border-subtle: #C8D4C0;
+  --border-medium: #B0C4A8;
+  --border-strong: #3A6A3A;
 
   /* Text */
-  --text: #2c2825;
-  --text-secondary: #5e5650;
-  --text-muted: #8a8079;
-
-  /* Borders — glass edge highlights */
-  --border: rgba(255, 255, 255, 0.55);
-  --border-hover: rgba(255, 255, 255, 0.75);
+  --text-primary: #0E1A0E;
+  --text-secondary: #2A3A2A;
+  --text-muted: #4A6A4A;
+  --text-faint: #6A826A;
+  --text-disabled: #8A9A8A;
 
   /* Accent */
-  --accent: #3d6b9e;
-  --accent-hover: #2d5a8a;
-  --accent-light: rgba(61, 107, 158, 0.12);
-  --accent-text: #ffffff;
+  --accent-primary: #3A6A3A;
+  --accent-cta: #3A6A3A;
+  --accent-cta-text: #F2F4F0;
 
-  /* Semantic */
-  --success: #2d8659;
-  --success-light: rgba(45, 134, 89, 0.1);
-  --warning: #b8860b;
-  --warning-light: rgba(184, 134, 11, 0.1);
-  --error: #c0392b;
-  --error-light: rgba(192, 57, 43, 0.08);
+  /* Country badges */
+  --country-cn-bg: #D4EEE8;
+  --country-cn-text: #1A6A5A;
+  --country-in-bg: #C8D8B8;
+  --country-in-text: #1A4A1A;
+  --country-ae-bg: #E8D8B0;
+  --country-ae-text: #5A3A00;
 
-  /* Glass shadows */
-  --shadow: 0 1px 2px rgba(60, 40, 20, 0.04), 0 2px 6px rgba(60, 40, 20, 0.04), inset 0 1px 0 rgba(255,255,255,0.5);
-  --shadow-md: 0 2px 4px rgba(60, 40, 20, 0.04), 0 8px 16px rgba(60, 40, 20, 0.06), inset 0 1px 0 rgba(255,255,255,0.5);
-  --shadow-lg: 0 4px 8px rgba(60, 40, 20, 0.04), 0 16px 32px rgba(60, 40, 20, 0.08), inset 0 1px 0 rgba(255,255,255,0.4);
+  /* Duty pills (0-10%) */
+  --duty-low-bg: #C8D8B8;
+  --duty-low-text: #1A4A1A;
+  --duty-low-bar: #3A6A3A;
+
+  /* Duty pills (11-20%) */
+  --duty-med-bg: #E8D8A8;
+  --duty-med-text: #5A3A00;
+  --duty-med-bar: #B08020;
+
+  /* Duty pills (21%+) */
+  --duty-high-bg: #F0C8B8;
+  --duty-high-text: #6A1A0A;
+  --duty-high-bar: #C84030;
+
+  /* Warnings (APPROXIMATE MATCH only) */
+  --warning-bg: #F8EEC8;
+  --warning-border: #C8A020;
+  --warning-text: #7A5A00;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
 
   /* Radii */
-  --radius: 16px;
-  --radius-sm: 10px;
+  --radius-sm: 8px;
+  --radius: 12px;
   --radius-lg: 20px;
 
-  /* Glass-specific */
-  --glass-blur: blur(18px) saturate(180%);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+  /* Legacy variable aliases (for inline var() usage in components) */
+  --bg: var(--bg-base);
+  --bg-card: var(--bg-surface);
+  --bg-elevated: var(--bg-raised);
+  --text: var(--text-primary);
+  --border: var(--border-subtle);
+  --border-hover: var(--border-medium);
+  --accent: var(--accent-primary);
+  --accent-hover: #4A7A4A;
+  --accent-light: rgba(58,106,58,0.1);
+  --accent-text: var(--accent-cta-text);
+  --success: #2A6A3A;
+  --success-light: rgba(42,106,58,0.08);
+  --warning: var(--warning-text);
+  --warning-light: var(--warning-bg);
+  --error: #9A2A1A;
+  --error-light: rgba(154,42,26,0.06);
+  --glass-blur: blur(12px) saturate(140%);
+  --glass-border: 1px solid var(--border-subtle);
 }
 
 /* --------------------------------------------
    2. CSS Custom Properties — Dark Mode
    -------------------------------------------- */
-.dark {
-  /* Background — warm charcoal with glass layers */
-  --bg: #151311;
-  --bg-card: rgba(40, 36, 31, 0.6);
-  --bg-elevated: rgba(40, 36, 31, 0.42);
-  --bg-input: rgba(45, 41, 36, 0.7);
+[data-theme="dark"], .dark {
+  --bg-base: #0E1210;
+  --bg-surface: #090D08;
+  --bg-raised: #141A12;
+  --bg-input: #090D08;
 
-  /* Text */
-  --text: #e8e2da;
-  --text-secondary: #b0a899;
-  --text-muted: #706860;
+  --border-subtle: #1C2A18;
+  --border-medium: #2A3E20;
+  --border-strong: #4A7A38;
 
-  /* Borders — subtle glass edge in dark */
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.14);
+  --text-primary: #E0EADA;
+  --text-secondary: #C8D4BE;
+  --text-muted: #5A7A4E;
+  --text-faint: #3A4E34;
+  --text-disabled: #2A3A26;
 
-  /* Accent */
-  --accent: #7badd4;
-  --accent-hover: #9dc5e6;
-  --accent-light: rgba(123, 173, 212, 0.12);
-  --accent-text: #151311;
+  --accent-primary: #8AB878;
+  --accent-cta: #4A7A38;
+  --accent-cta-text: #E8F0E0;
 
-  /* Semantic */
-  --success: #5ec99a;
-  --success-light: rgba(94, 201, 154, 0.1);
-  --warning: #e8c45a;
-  --warning-light: rgba(232, 196, 90, 0.1);
-  --error: #e88a80;
-  --error-light: rgba(232, 138, 128, 0.1);
+  --country-cn-bg: #0E1C1E;
+  --country-cn-text: #4EC4B0;
+  --country-in-bg: #141E10;
+  --country-in-text: #8AB878;
+  --country-ae-bg: #1E1808;
+  --country-ae-text: #D4924A;
 
-  /* Glass shadows — darker, more depth */
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255,255,255,0.04);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255,255,255,0.04);
-  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15), 0 16px 32px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255,255,255,0.03);
+  --duty-low-bg: #141E10;
+  --duty-low-text: #8AB878;
+  --duty-low-bar: #4A7A38;
 
-  /* Glass-specific */
-  --glass-blur: blur(18px) saturate(160%);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.06);
+  --duty-med-bg: #1E1A08;
+  --duty-med-text: #C8A84A;
+  --duty-med-bar: #C8A84A;
+
+  --duty-high-bg: #2A1008;
+  --duty-high-text: #E06050;
+  --duty-high-bar: #E06050;
+
+  --warning-bg: #241C06;
+  --warning-border: #6A5010;
+  --warning-text: #D4A030;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2);
+
+  --radial-hero: radial-gradient(ellipse at 50% -10%, rgba(80,120,60,0.12) 0%, transparent 65%);
+
+  /* Legacy aliases */
+  --bg: var(--bg-base);
+  --bg-card: var(--bg-surface);
+  --bg-elevated: var(--bg-raised);
+  --text: var(--text-primary);
+  --border: var(--border-subtle);
+  --border-hover: var(--border-medium);
+  --accent: var(--accent-primary);
+  --accent-hover: #5A8A48;
+  --accent-light: rgba(138,184,120,0.1);
+  --accent-text: var(--accent-cta-text);
+  --success: #5EC99A;
+  --success-light: rgba(94,201,154,0.08);
+  --warning: var(--warning-text);
+  --warning-light: var(--warning-bg);
+  --error: #E06050;
+  --error-light: rgba(224,96,80,0.08);
+  --glass-blur: blur(12px) saturate(140%);
+  --glass-border: 1px solid var(--border-subtle);
 }
 
 /* --------------------------------------------
@@ -107,18 +175,34 @@
 }
 
 body {
-  background-color: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji";
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+::selection {
+  background-color: var(--accent-light);
+  color: var(--text-primary);
+}
+
+/* Ensure all themed elements transition smoothly */
+body, .card, .btn-primary, .btn-secondary, .btn-ghost, .badge,
+.input, .glass-header, .glass, .glass-elevated, .skeleton,
+[class*="border-"], [class*="bg-"], [class*="text-"] {
+  transition: background-color 200ms ease, border-color 200ms ease,
+              color 200ms ease;
+}
+
+/* Disable transitions on elements where it causes flicker */
+button:not(.no-transition), a, .no-transition {
+  transition: none;
 }
 
 /* --------------------------------------------
-   4. Page Shell
+   4. Page Shell (single definition)
    -------------------------------------------- */
 .page-shell {
   max-width: 1200px;
@@ -136,49 +220,45 @@ body {
 }
 
 /* --------------------------------------------
-   5. Card — Glassmorphism
+   5. Card — Sage & Linen
    -------------------------------------------- */
 .card {
-  background: var(--bg-card);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+  box-shadow: var(--shadow-sm);
+  transition: transform 150ms ease, box-shadow 150ms ease,
+              border-color 150ms ease, background-color 200ms ease;
 }
 
 .card:hover {
-  border-color: var(--border-hover);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  border-color: var(--border-medium);
 }
 
 /* --------------------------------------------
-   6. Buttons — Glassmorphism
+   6. Buttons
    -------------------------------------------- */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--accent);
-  color: var(--accent-text);
+  background: var(--accent-cta);
+  color: var(--accent-cta-text);
   border: none;
   border-radius: var(--radius-sm);
   padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1.4;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  transition: background 150ms ease, transform 100ms ease;
 }
 
 .btn-primary:hover {
-  background-color: var(--accent-hover);
-  box-shadow: var(--shadow-md), 0 0 20px rgba(61, 107, 158, 0.15);
+  background: var(--accent-hover);
 }
 
 .btn-primary:active {
@@ -186,7 +266,7 @@ body {
 }
 
 .btn-primary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--border-strong);
   outline-offset: 2px;
 }
 
@@ -195,23 +275,21 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--bg-elevated);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--text);
-  border: var(--glass-border);
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-medium);
   border-radius: var(--radius-sm);
   padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1.4;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  transition: border-color 150ms ease, color 150ms ease, transform 100ms ease;
 }
 
 .btn-secondary:hover {
-  background-color: var(--bg-card);
-  border-color: var(--border-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .btn-secondary:active {
@@ -219,7 +297,7 @@ body {
 }
 
 .btn-secondary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--border-strong);
   outline-offset: 2px;
 }
 
@@ -228,63 +306,57 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background-color: transparent;
+  background: transparent;
   color: var(--text-secondary);
   border: none;
   border-radius: var(--radius-sm);
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 .btn-ghost:hover {
-  background: var(--bg-elevated);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: var(--text);
+  background: var(--bg-raised);
+  color: var(--text-primary);
 }
 
 .btn-ghost:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--border-strong);
   outline-offset: 2px;
 }
 
 /* --------------------------------------------
-   7. Input — Glassmorphism
+   7. Input
    -------------------------------------------- */
 .input {
-  background: var(--bg-input);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-medium);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
-  font-size: 14px;
-  color: var(--text);
+  font-size: 13px;
+  color: var(--text-primary);
   line-height: 1.5;
   width: 100%;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 150ms ease;
 }
 
 .input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-faint);
 }
 
 .input:hover {
-  border-color: var(--border-hover);
+  border-color: var(--border-medium);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-light), 0 0 16px rgba(61, 107, 158, 0.08);
+  border-color: var(--border-strong);
 }
 
 /* --------------------------------------------
-   8. Badges — Glassmorphism
+   8. Badges / Pills / Tags
    -------------------------------------------- */
 .badge {
   display: inline-flex;
@@ -296,30 +368,22 @@ body {
   line-height: 1.6;
   border-radius: 9999px;
   background: var(--accent-light);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--accent);
+  color: var(--accent-primary);
   white-space: nowrap;
 }
 
 .badge-success {
   background: var(--success-light);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   color: var(--success);
 }
 
 .badge-warning {
-  background: var(--warning-light);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--warning);
+  background: var(--warning-bg);
+  color: var(--warning-text);
 }
 
 .badge-error {
   background: var(--error-light);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   color: var(--error);
 }
 
@@ -327,15 +391,64 @@ body {
    9. Skeleton Loading
    -------------------------------------------- */
 .skeleton {
-  background: var(--bg-elevated);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--bg-raised);
   border-radius: var(--radius-sm);
   animation: shimmer 1.8s ease-in-out infinite;
 }
 
 /* --------------------------------------------
-   10. Animations
+   10. Scrollbar
+   -------------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-medium);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-strong);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) var(--bg-surface);
+}
+
+/* --------------------------------------------
+   11. Utility Classes
+   -------------------------------------------- */
+.glass {
+  background: var(--bg-surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-elevated {
+  background: var(--bg-raised);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-header {
+  background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* --------------------------------------------
+   12. Animations & Keyframes
    -------------------------------------------- */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -353,72 +466,163 @@ body {
   100% { opacity: 0.5; }
 }
 
-@keyframes glassPulse {
-  0%, 100% { box-shadow: var(--shadow); }
-  50% { box-shadow: var(--shadow-md); }
+@keyframes barGrow {
+  from { width: 0; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out both;
+  animation: fadeIn 300ms ease-out both;
 }
 
 .animate-slide-up {
-  animation: slideUp 0.4s ease-out both;
+  animation: slideUp 400ms ease-out both;
+}
+
+.animate-dropdown {
+  animation: dropdownIn 120ms ease both;
+}
+
+.animate-dropdown-out {
+  animation: dropdownIn 120ms ease reverse both;
+}
+
+/* Duty & confidence progress bar initial animation */
+.bar-animate {
+  animation: barGrow 600ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  .card:hover {
+    transform: none;
+  }
+  .btn-primary:active,
+  .btn-secondary:active {
+    transform: none;
+  }
 }
 
 /* --------------------------------------------
-   11. Scrollbar (subtle)
+   13. Typography Helpers
    -------------------------------------------- */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: var(--border);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: var(--border-hover);
+.font-mono {
+  font-family: 'Courier New', 'Courier', monospace;
 }
 
 /* --------------------------------------------
-   12. Selection
+   14. Autocomplete dropdown
    -------------------------------------------- */
-::selection {
-  background-color: var(--accent-light);
-  color: var(--text);
+.autocomplete-dropdown {
+  animation: dropdownIn 120ms ease both;
 }
 
 /* --------------------------------------------
-   13. Glassmorphism Utility Classes
+   15. Stat count-up container
    -------------------------------------------- */
-.glass {
-  background: var(--bg-card);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
+.stat-card {
+  animation: countUp 600ms ease-out both;
 }
 
-.glass-elevated {
-  background: var(--bg-elevated);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
+/* Duty pill coloring based on rate value (applied via style prop) */
+/* Country badge base styles - colour applied via style prop */
+
+/* --------------------------------------------
+   16. Compare grid responsive (must not use flex-wrap)
+   -------------------------------------------- */
+.compare-grid-responsive {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 700px) {
+  .compare-grid-responsive {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 699px) {
+  .compare-grid-responsive {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detail-split-responsive {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 700px) {
+  .detail-split-responsive {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+@media (max-width: 699px) {
+  .detail-split-responsive {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* --------------------------------------------
-   14. Header Glass (enhanced)
+   17. Hero section
    -------------------------------------------- */
-.glass-header {
-  background: color-mix(in srgb, var(--bg-card) 65%, transparent);
-  backdrop-filter: blur(20px) saturate(200%);
-  -webkit-backdrop-filter: blur(20px) saturate(200%);
-  border-bottom: var(--glass-border);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04), inset 0 -1px 0 rgba(255,255,255,0.3);
+.hero-section {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dark .hero-section {
+  background-image: var(--radial-hero);
+}
+
+/* --------------------------------------------
+   18. Navigation link states
+   -------------------------------------------- */
+.nav-link {
+  color: var(--text-disabled);
+  font-weight: 600;
+  transition: color 150ms ease;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* --------------------------------------------
+   19. Ring accent for best-match card
+   -------------------------------------------- */
+.ring-accent {
+  outline: 2px solid var(--border-strong);
+  outline-offset: -2px;
+}
+
+/* --------------------------------------------
+   20. Disclaimer / muted text
+   -------------------------------------------- */
+.disclaimer {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.muted {
+  color: var(--text-muted);
 }

@@ -106,8 +106,8 @@ export function CompliancePanel({ code }: { code: Code }) {
           style={{
             marginLeft: "auto",
             backgroundColor:
-              code.country === "CN" ? "var(--warning-light)" : code.country === "IN" ? "var(--success-light)" : "#e0f2fe",
-            color: code.country === "CN" ? "var(--warning)" : code.country === "IN" ? "var(--success)" : "#0284c7",
+              code.country === "CN" ? "var(--warning-light)" : code.country === "IN" ? "var(--success-light)" : "var(--country-ae-bg)",
+            color: code.country === "CN" ? "var(--warning)" : code.country === "IN" ? "var(--success)" : "var(--country-ae-text)",
             fontSize: 11,
             fontWeight: 600,
           }}
