@@ -145,9 +145,23 @@
   --shadow-glow: 0 0 24px rgba(138,184,120,0.12);
 
   --radial-hero: radial-gradient(ellipse at 50% -10%, rgba(80,120,60,0.12) 0%, transparent 65%);
+  --page-gradient: linear-gradient(
+    to right,
+    rgba(138,184,120,0.04) 0%,
+    transparent 15%,
+    transparent 85%,
+    rgba(138,184,120,0.04) 100%
+  );
 
   /* Light hero gradient */
   --radial-hero: radial-gradient(ellipse at 50% -10%, rgba(58,106,58,0.06) 0%, transparent 65%);
+  --page-gradient: linear-gradient(
+    to right,
+    rgba(0,0,0,0.03) 0%,
+    transparent 15%,
+    transparent 85%,
+    rgba(0,0,0,0.03) 100%
+  );
 
   /* Legacy aliases */
   --bg: var(--bg-base);
@@ -183,6 +197,7 @@
 
 body {
   background-color: var(--bg-base);
+  background-image: var(--page-gradient);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -230,18 +245,37 @@ button:not(.no-transition), a, .no-transition {
    5. Card — Sage & Linen
    -------------------------------------------- */
 .card {
+  position: relative;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  transition: transform 200ms ease, box-shadow 200ms ease,
-              border-color 200ms ease, background-color 200ms ease;
+  transition: transform 250ms ease, box-shadow 250ms ease,
+              border-color 250ms ease, background-color 200ms ease;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  border-radius: var(--radius) 0 0 var(--radius);
+  background: var(--accent-primary);
+  opacity: 0;
+  transition: opacity 250ms ease, box-shadow 250ms ease;
 }
 
 .card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px);
   box-shadow: var(--shadow-lg);
   border-color: var(--border-medium);
+}
+
+.card:hover::before {
+  opacity: 0.5;
+  box-shadow: 0 0 12px var(--accent-primary);
 }
 
 .card-best {
@@ -249,9 +283,18 @@ button:not(.no-transition), a, .no-transition {
   box-shadow: var(--shadow-sm), var(--shadow-glow);
 }
 
+.card-best::before {
+  opacity: 0.6;
+  box-shadow: 0 0 16px var(--accent-primary);
+}
+
 .card-best:hover {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.card-best:hover::before {
+  opacity: 1;
 }
 
 /* --------------------------------------------
