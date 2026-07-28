@@ -16,8 +16,8 @@ export function LanguageSwitcher() {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 2,
-        padding: 2,
+        gap: 6,
+        padding: "2px 4px",
         borderRadius: "var(--radius-sm)",
         backgroundColor: "var(--bg-elevated)",
         border: "1px solid var(--border)",

@@ -372,6 +372,23 @@ function confidencePercent(score: number): number {
   return Math.round(Math.min(100, Math.max(0, score * 100)));
 }
 
+function enrichChineseDescriptions<T extends { country: string; hsCode: string; descriptionLocal?: string | null }>(
+  results: T[],
+  chinaCache: { hs_code_8: string; hs_code?: string | null; description_zh?: string | null }[],
+): T[] {
+  const cnMap = new Map<string, string>();
+  for (const c of chinaCache) {
+    const key = c.hs_code_8 || c.hs_code;
+    if (key && c.description_zh) cnMap.set(key, c.description_zh);
+  }
+  return results.map((r) => {
+    if (r.country === "CN" || !r.descriptionLocal) return r;
+    const zh = cnMap.get(r.hsCode);
+    if (zh) return { ...r, descriptionLocal: zh };
+    return r;
+  });
+}
+
 async function fallbackClassify(description: string, country: "CN" | "IN" | "AE" | "BOTH", limit: number) {
   const normalized = description.trim();
   const hasMeaningfulToken = tokenize(normalized).length >= 2;
@@ -417,21 +434,23 @@ app.get("/api/v1/search", async (req, res) => {
 
   try {
     const results = await search.search(q, country, 20);
-    db.searchLog.create({ data: { query: q, country, resultCount: results.length } }).catch(() => {});
-    res.json({ results, total: results.length });
+    const enriched = enrichChineseDescriptions(results, await localChina());
+    db.searchLog.create({ data: { query: q, country, resultCount: enriched.length } }).catch(() => {});
+    res.json({ results: enriched, total: enriched.length });
   } catch {
     const results = await fallbackSearch(q, country, 20);
-    res.json({ results, total: results.length });
+    const enriched = enrichChineseDescriptions(results, await localChina());
+    res.json({ results: enriched, total: enriched.length });
   }
 });
 
 app.get("/api/v1/autocomplete", async (req, res) => {
   try {
     const results = await search.search(String(req.query.q ?? ""), CountrySchema.parse(req.query.country ?? "BOTH"), 5);
-    res.json({ results });
+    res.json({ results: enrichChineseDescriptions(results, await localChina()) });
   } catch {
     const results = await fallbackSearch(String(req.query.q ?? ""), CountrySchema.parse(req.query.country ?? "BOTH"), 5);
-    res.json({ results });
+    res.json({ results: enrichChineseDescriptions(results, await localChina()) });
   }
 });
 
@@ -442,11 +461,12 @@ app.get("/api/v1/code/:country/:code", async (req, res) => {
   if (country === "AE") {
     const dbRow = await db.uaeHsCode.findUnique({ where: { hsCode: code } }).catch(() => null);
     if (dbRow) {
+      const cnRow = (await localChina()).find(c => c.hs_code_8 === code || c.hs_code === code);
       return res.json({
         country: "AE",
         hsCode: dbRow.hsCode,
         descriptionEn: dbRow.descriptionEn,
-        descriptionLocal: dbRow.descriptionAr ?? "",
+        descriptionLocal: cnRow?.description_zh ?? dbRow.descriptionAr ?? "",
         chapter: dbRow.chapter,
         dutyRate: Number(dbRow.customsDutyRate),
         secondaryRate: Number(dbRow.vatRate),
@@ -462,6 +482,10 @@ app.get("/api/v1/code/:country/:code", async (req, res) => {
       });
     }
     const row = await getUaeCode(code);
+    if (row) {
+      const cnRow = (await localChina()).find(c => c.hs_code_8 === code || c.hs_code === code);
+      if (cnRow?.description_zh) row.descriptionLocal = cnRow.description_zh;
+    }
     return res.json(row);
   }
 
@@ -493,11 +517,12 @@ app.get("/api/v1/code/:country/:code", async (req, res) => {
 
   const dbRow = await db.indiaHsCode.findUnique({ where: { hsCode: code } }).catch(() => null);
   if (dbRow) {
+    const cnRow = (await localChina()).find(c => c.hs_code_8 === code || c.hs_code === code);
     return res.json({
       country: "IN",
       hsCode: dbRow.hsCode,
       descriptionEn: dbRow.descriptionEn,
-      descriptionLocal: dbRow.descriptionHi ?? "",
+      descriptionLocal: cnRow?.description_zh ?? dbRow.descriptionHi ?? "",
       chapter: dbRow.chapter,
       dutyRate: dbRow.bcdRate ? Number(dbRow.bcdRate) : null,
       secondaryRate: dbRow.igstRate ? Number(dbRow.igstRate) : null,
@@ -513,6 +538,10 @@ app.get("/api/v1/code/:country/:code", async (req, res) => {
     });
   }
   const row = await getIndiaCode(code);
+  if (row) {
+    const cnRow = (await localChina()).find(c => c.hs_code_8 === code || c.hs_code === code);
+    if (cnRow?.description_zh) row.descriptionLocal = cnRow.description_zh;
+  }
   res.json(row);
 });
 
@@ -679,7 +708,11 @@ app.get("/api/v1/browse/:country", async (req, res) => {
     mapped.sort(sortFn);
 
     const start = (page - 1) * limit;
-    const results = mapped.slice(start, start + limit);
+    let results = mapped.slice(start, start + limit);
+
+    if (countryParam !== "CN") {
+      results = enrichChineseDescriptions(results, await localChina());
+    }
 
     res.json({ results, total, page, limit, chapters: chaptersWithNames });
   } catch (err: any) {

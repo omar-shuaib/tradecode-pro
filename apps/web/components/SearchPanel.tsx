@@ -222,7 +222,7 @@ export function SearchPanel() {
               placeholder={t("search.placeholder")}
               style={{
                 paddingLeft: 46,
-                paddingRight: 90,
+                paddingRight: 140,
                 height: 52,
                 fontSize: 16,
                 borderRadius: "var(--radius)",
@@ -241,7 +241,7 @@ export function SearchPanel() {
                 }}
                 style={{
                   position: "absolute",
-                  right: 80,
+                  right: 112,
                   top: "50%",
                   transform: "translateY(-50%)",
                   background: "none",
@@ -375,7 +375,7 @@ export function SearchPanel() {
               const primary = group[0];
               return (
                 <article
-                  className="card"
+                  className={`card${(primary.confidence ?? 0) >= 80 ? " card-best" : ""}`}
                   key={`${groupKey}-${primary.descriptionEn}`}
                   onClick={() => handleSelect(primary.hsCode)}
                   style={{
@@ -390,8 +390,13 @@ export function SearchPanel() {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
-                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace", color: "var(--text)" }}>
-                        {primary.hsCode}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace", color: "var(--text)" }}>
+                          {primary.hsCode}
+                        </div>
+                        {(primary.confidence ?? 0) >= 80 && (
+                          <span className="best-match-badge">Best</span>
+                        )}
                       </div>
                       <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                         {Array.from(new Set(group.map((r) => r.country))).map((c) => (
@@ -399,7 +404,14 @@ export function SearchPanel() {
                         ))}
                       </div>
                     </div>
-                    <DutyChip rate={primary.dutyRate} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <DutyChip rate={primary.dutyRate} />
+                      {(primary.confidence ?? 0) > 0 && (
+                        <span className="badge" style={{ fontSize: 11, padding: "1px 6px", background: (primary.confidence ?? 0) >= 80 ? "var(--accent-light)" : "var(--bg-raised)", color: (primary.confidence ?? 0) >= 80 ? "var(--accent)" : "var(--text-muted)" }}>
+                          {(primary.confidence ?? 0)}%
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p
                     style={{

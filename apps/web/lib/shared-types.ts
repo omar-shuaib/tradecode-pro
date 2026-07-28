@@ -23,6 +23,7 @@ export const CodeSchema = z.object({
   supervisoryConditions: z.string().nullable(),
   dataSource: z.string().nullable(),
   lastUpdated: z.string().nullable(),
+  confidence: z.number().optional(),
 });
 export type CodeResult = z.infer<typeof CodeSchema>;
 
