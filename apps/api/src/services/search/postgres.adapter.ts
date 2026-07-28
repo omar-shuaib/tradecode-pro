@@ -99,6 +99,16 @@ function buildScoreSql(
   `;
 }
 
+function bigintToNumber<T>(rows: T[]): T[] {
+  return rows.map((row) => {
+    const out: any = {};
+    for (const [k, v] of Object.entries(row as any)) {
+      out[k] = typeof v === "bigint" ? Number(v) : v;
+    }
+    return out;
+  });
+}
+
 export class PostgresSearchProvider implements SearchProvider {
   async search(q: string, country: Country, limit = 20) {
     const like = `%${q}%`;
@@ -136,7 +146,7 @@ export class PostgresSearchProvider implements SearchProvider {
         LIMIT $4`,
         q, like, perCountry, limit
       );
-      return rows as CodeResult[];
+      return bigintToNumber(rows as any[]) as CodeResult[];
     }
 
     const rows = await db.$queryRawUnsafe(
