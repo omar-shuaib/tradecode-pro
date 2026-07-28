@@ -418,11 +418,9 @@ app.get("/api/v1/search", async (req, res) => {
   try {
     const results = await search.search(q, country, 20);
     db.searchLog.create({ data: { query: q, country, resultCount: results.length } }).catch(() => {});
-    res.set("X-Search-Provider", "postgres").set("X-Result-Count", String(results.length));
     res.json({ results, total: results.length });
-  } catch (err: any) {
+  } catch {
     const results = await fallbackSearch(q, country, 20);
-    res.set("X-Search-Provider", "fallback").set("X-Result-Count", String(results.length)).set("X-Search-Error", err?.message?.substring(0, 200) ?? "unknown");
     res.json({ results, total: results.length });
   }
 });
@@ -977,7 +975,6 @@ app.get("/health", async (_req, res) => {
 
   res.json({
     status: database ? "ok" : "degraded",
-    version: "2.1.0-hs-scoring",
     database,
     supabase: database,
     geminiKeyPresent: Boolean(process.env.GEMINI_API_KEY),
