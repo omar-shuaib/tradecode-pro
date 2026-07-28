@@ -975,6 +975,7 @@ app.get("/health", async (_req, res) => {
 
   res.json({
     status: database ? "ok" : "degraded",
+    version: "2.1.0-hs-scoring",
     database,
     supabase: database,
     geminiKeyPresent: Boolean(process.env.GEMINI_API_KEY),

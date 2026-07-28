@@ -129,7 +129,7 @@ export class PostgresSearchProvider implements SearchProvider {
               ${buildScoreSql("description_en", "hs_code", 1, "chapter", likelyChapters)}
             FROM hs_codes_uae
           ) s
-          WHERE score > 0.05 OR "hsCode" LIKE $2
+          WHERE score >= 0.06 OR "hsCode" LIKE $2
         )
         SELECT * FROM all_results WHERE rn <= $3
         ORDER BY score DESC
@@ -159,7 +159,7 @@ export class PostgresSearchProvider implements SearchProvider {
           FALSE, FALSE, is_restricted, is_prohibited, NULL, NULL, NULL, data_source, last_updated::text,
           ${buildScoreSql("description_en", "hs_code", 1, "chapter", likelyChapters)}
         FROM hs_codes_uae
-      ) s WHERE (country = $2 OR $2 = 'BOTH') AND (score > 0.05 OR "hsCode" LIKE $3)
+      ) s WHERE (country = $2 OR $2 = 'BOTH') AND (score >= 0.06 OR "hsCode" LIKE $3)
       ORDER BY score DESC LIMIT $4`,
       q, country, like, limit
     );
