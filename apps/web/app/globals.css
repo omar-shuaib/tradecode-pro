@@ -254,47 +254,20 @@ button:not(.no-transition), a, .no-transition {
               border-color 250ms ease, background-color 200ms ease;
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  border-radius: var(--radius) 0 0 var(--radius);
-  background: var(--accent-primary);
-  opacity: 0;
-  transition: opacity 250ms ease, box-shadow 250ms ease;
-}
-
 .card:hover {
   transform: translateY(-6px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-lg), -3px 2px 8px -2px color-mix(in srgb, var(--accent-primary) 35%, transparent);
   border-color: var(--border-medium);
-}
-
-.card:hover::before {
-  opacity: 0.5;
-  box-shadow: 0 0 12px var(--accent-primary);
 }
 
 .card-best {
   border-color: var(--accent-primary);
-  box-shadow: var(--shadow-sm), var(--shadow-glow);
-}
-
-.card-best::before {
-  opacity: 0.6;
-  box-shadow: 0 0 16px var(--accent-primary);
+  box-shadow: var(--shadow-sm), var(--shadow-glow), -2px 1px 6px -1px color-mix(in srgb, var(--accent-primary) 40%, transparent);
 }
 
 .card-best:hover {
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
-}
-
-.card-best:hover::before {
-  opacity: 1;
+  box-shadow: var(--shadow-lg), var(--shadow-glow), -3px 2px 10px -1px color-mix(in srgb, var(--accent-primary) 55%, transparent);
 }
 
 /* --------------------------------------------

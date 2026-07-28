@@ -374,9 +374,12 @@ export function SearchPanel() {
             {resultGroups.map(([groupKey, group], i) => {
               const primary = group[0];
               return (
+                <div
+                  key={`${groupKey}-${primary.descriptionEn}`}
+                  style={{ animation: `slideUp 0.3s ease-out both`, animationDelay: `${i * 40}ms` }}
+                >
                 <article
                   className={`card${(primary.confidence ?? 0) >= 80 ? " card-best" : ""}`}
-                  key={`${groupKey}-${primary.descriptionEn}`}
                   onClick={() => handleSelect(primary.hsCode)}
                   style={{
                     padding: 20,
@@ -384,8 +387,6 @@ export function SearchPanel() {
                     display: "flex",
                     flexDirection: "column",
                     gap: 10,
-                    animationDelay: `${i * 40}ms`,
-                    animation: "slideUp 0.3s ease-out both",
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -457,6 +458,7 @@ export function SearchPanel() {
                     </p>
                   )}
                 </article>
+                </div>
               );
             })}
           </div>
