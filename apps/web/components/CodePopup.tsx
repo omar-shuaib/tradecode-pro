@@ -130,8 +130,8 @@ function ClosestMatchPanel({
   country: string;
   t: (key: any, params?: Record<string, string | number>) => string;
 }) {
-  const confColor = match.confidence >= 70 ? "var(--success)" : match.confidence >= 40 ? "var(--warning)" : "var(--error)";
-  const confLabel = match.confidence >= 70 ? t("compare.closest.high") : match.confidence >= 40 ? t("compare.closest.medium") : t("compare.closest.low");
+  const confColor = match.confidence >= 80 ? "var(--success)" : match.confidence >= 60 ? "var(--warning)" : "var(--error)";
+  const confLabel = match.confidence >= 80 ? t("compare.closest.high") : match.confidence >= 60 ? t("compare.closest.medium") : t("compare.closest.low");
   const sideLabel = country === "CN" ? t("popup.cn.customs") : country === "IN" ? t("popup.in.customs") : t("popup.ae.customs");
 
   return (

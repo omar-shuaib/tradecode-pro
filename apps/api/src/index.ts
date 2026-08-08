@@ -791,14 +791,15 @@ async function findClosestMatch(
     }
   }
 
-  // ── Description similarity (Jaccard token overlap) ──────────
+  // ── Jaccard token similarity on descriptions ─────────────────
   function descSimilarity(a: string, b: string): number {
     const stopwords = new Set([
       "and","or","of","the","for","in","to","a","an","other",
       "not","with","including","than","more","used","similar",
       "products","goods","articles","specified","like","such",
       "whether","being","those","their","which","from","its",
-      "has","are","is","as","by","at","on","into","out",
+      "has","are","is","as","by","at","on","into","out","all",
+      "this","that","these","where","when","only","also","both",
     ]);
     const tok = (s: string) =>
       s.toLowerCase()
@@ -823,112 +824,125 @@ async function findClosestMatch(
     secondaryRate: number | null;
   };
 
-  async function fetchByCode(code: string): Promise<Candidate | null> {
-    if (targetCountry === "CN") {
-      const r = await db.chinaHsCode.findUnique({ where: { hsCode8: code } });
-      if (!r) return null;
-      return { hsCode: r.hsCode8, descriptionEn: r.descriptionEn,
-        descriptionLocal: r.descriptionZh ?? "", chapter: r.chapter,
-        dutyRate: r.mfnDutyRate ? Number(r.mfnDutyRate) : null,
-        secondaryRate: r.vatRate ? Number(r.vatRate) : null };
-    } else if (targetCountry === "IN") {
-      const r = await db.indiaHsCode.findUnique({ where: { hsCode: code } });
-      if (!r) return null;
-      return { hsCode: r.hsCode, descriptionEn: r.descriptionEn,
-        descriptionLocal: r.descriptionHi ?? "", chapter: r.chapter,
-        dutyRate: r.bcdRate ? Number(r.bcdRate) : null,
-        secondaryRate: r.igstRate ? Number(r.igstRate) : null };
-    } else {
-      const r = await db.uaeHsCode.findUnique({ where: { hsCode: code } });
-      if (!r) return null;
-      return { hsCode: r.hsCode, descriptionEn: r.descriptionEn,
-        descriptionLocal: r.descriptionAr ?? "", chapter: r.chapter,
-        dutyRate: Number(r.customsDutyRate),
-        secondaryRate: Number(r.vatRate) };
-    }
-  }
-
   async function fetchMany(where: any, take: number): Promise<Candidate[]> {
     if (targetCountry === "CN") {
       const rows = await db.chinaHsCode.findMany({ where, take });
-      return rows.map(r => ({ hsCode: r.hsCode8, descriptionEn: r.descriptionEn,
-        descriptionLocal: r.descriptionZh ?? "", chapter: r.chapter,
+      return rows.map(r => ({
+        hsCode: r.hsCode8,
+        descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionZh ?? "",
+        chapter: r.chapter,
         dutyRate: r.mfnDutyRate ? Number(r.mfnDutyRate) : null,
-        secondaryRate: r.vatRate ? Number(r.vatRate) : null }));
+        secondaryRate: r.vatRate ? Number(r.vatRate) : null,
+      }));
     } else if (targetCountry === "IN") {
       const rows = await db.indiaHsCode.findMany({ where, take });
-      return rows.map(r => ({ hsCode: r.hsCode, descriptionEn: r.descriptionEn,
-        descriptionLocal: r.descriptionHi ?? "", chapter: r.chapter,
+      return rows.map(r => ({
+        hsCode: r.hsCode,
+        descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionHi ?? "",
+        chapter: r.chapter,
         dutyRate: r.bcdRate ? Number(r.bcdRate) : null,
-        secondaryRate: r.igstRate ? Number(r.igstRate) : null }));
+        secondaryRate: r.igstRate ? Number(r.igstRate) : null,
+      }));
     } else {
       const rows = await db.uaeHsCode.findMany({ where, take });
-      return rows.map(r => ({ hsCode: r.hsCode, descriptionEn: r.descriptionEn,
-        descriptionLocal: r.descriptionAr ?? "", chapter: r.chapter,
+      return rows.map(r => ({
+        hsCode: r.hsCode,
+        descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionAr ?? "",
+        chapter: r.chapter,
         dutyRate: Number(r.customsDutyRate),
-        secondaryRate: Number(r.vatRate) }));
+        secondaryRate: Number(r.vatRate),
+      }));
     }
+  }
+
+  function scoreAndRank(candidates: Candidate[], sourceDescription: string) {
+    return candidates
+      .map(c => ({
+        ...c,
+        sim: descSimilarity(sourceDescription, c.descriptionEn),
+      }))
+      .filter(c => c.sim > 0)
+      .sort((a, b) => b.sim - a.sim);
   }
 
   const codeField = targetCountry === "CN" ? "hsCode8" : "hsCode";
 
-  // STEP 1 — Exact 8-digit match
-  const exact = await fetchByCode(sourceCode);
-  if (exact) {
-    return { ...exact, confidence: 95, matchMethod: "exact_8digit",
-      similarityScore: 1.0 };
-  }
-
-  // STEP 2 — 6-digit prefix match
+  // ── STEP 1: 6-digit WCO heading match, scored by description ─
+  // The first 6 digits are internationally standardised —
+  // all countries using HS share the same 6-digit headings.
+  // This is the only valid numerical anchor for matching.
   const prefix6 = sourceCode.substring(0, 6);
-  const six = await fetchMany(
-    { [codeField]: { startsWith: prefix6 } }, 20
+  const sixCandidates = await fetchMany(
+    { [codeField]: { startsWith: prefix6 } },
+    50
   );
-  if (six.length === 1) {
-    const sim = descSimilarity(sourceDesc, six[0].descriptionEn);
-    return { ...six[0], confidence: 85, matchMethod: "exact_6digit",
-      similarityScore: sim };
-  }
-  if (six.length > 1) {
-    const scored = six
-      .map(c => ({ ...c, sim: descSimilarity(sourceDesc, c.descriptionEn) }))
-      .sort((a, b) => b.sim - a.sim);
-    const best = scored[0];
-    return { ...best, confidence: 75, matchMethod: "6digit_multi",
-      similarityScore: best.sim };
-  }
-
-  // STEP 3 — 4-digit prefix match scored by description similarity
-  const prefix4 = sourceCode.substring(0, 4);
-  const four = await fetchMany(
-    { [codeField]: { startsWith: prefix4 } }, 100
-  );
-  if (four.length > 0) {
-    const scored = four
-      .map(c => ({ ...c, sim: descSimilarity(sourceDesc, c.descriptionEn) }))
-      .sort((a, b) => b.sim - a.sim);
-    const best = scored[0];
-    if (best.sim < 0.05) {
-      // Even the best 4-digit match has almost no description overlap
-      // Fall through to chapter match
-    } else {
-      const confidence = Math.min(60, Math.round(best.sim * 100));
-      return { ...best, confidence, matchMethod: "4digit_description_scored",
-        similarityScore: best.sim };
+  if (sixCandidates.length > 0) {
+    const ranked = scoreAndRank(sixCandidates, sourceDesc);
+    if (ranked.length > 0 && ranked[0].sim > 0) {
+      const best = ranked[0];
+      // If multiple candidates exist, pick by description score.
+      // If only one exists, it is a reasonable match but still
+      // score it so confidence reflects actual description overlap.
+      const isOnlyCandidate = sixCandidates.length === 1;
+      const confidence = isOnlyCandidate
+        ? Math.min(85, 60 + Math.round(best.sim * 30))
+        : Math.min(80, Math.round(best.sim * 100));
+      return {
+        ...best,
+        confidence,
+        matchMethod: "6digit_description_scored",
+        similarityScore: best.sim,
+      };
     }
   }
 
-  // STEP 4 — Chapter match scored by description similarity
-  const chapter = await fetchMany({ chapter: sourceChapter }, 500);
-  if (!chapter.length) return null;
-  const scoredChapter = chapter
-    .map(c => ({ ...c, sim: descSimilarity(sourceDesc, c.descriptionEn) }))
-    .sort((a, b) => b.sim - a.sim);
-  const best = scoredChapter[0];
-  if (best.sim < 0.05) return null;
-  const confidence = Math.min(35, Math.round(best.sim * 100));
-  return { ...best, confidence, matchMethod: "chapter_description_scored",
-    similarityScore: best.sim };
+  // ── STEP 2: 4-digit heading match, scored by description ─────
+  // The 4-digit heading is still a meaningful grouping
+  // (same product family) but accuracy is lower.
+  // MUST use description scoring — never return by position.
+  const prefix4 = sourceCode.substring(0, 4);
+  const fourCandidates = await fetchMany(
+    { [codeField]: { startsWith: prefix4 } },
+    200
+  );
+  if (fourCandidates.length > 0) {
+    const ranked = scoreAndRank(fourCandidates, sourceDesc);
+    if (ranked.length > 0 && ranked[0].sim >= 0.08) {
+      const best = ranked[0];
+      const confidence = Math.min(55, Math.round(best.sim * 80));
+      return {
+        ...best,
+        confidence,
+        matchMethod: "4digit_description_scored",
+        similarityScore: best.sim,
+      };
+    }
+  }
+
+  // ── STEP 3: Full chapter match, scored by description ────────
+  // Last resort. Same chapter means same broad product category.
+  // Description scoring is essential here — chapters can have
+  // hundreds of codes covering very different specific products.
+  const chapterCandidates = await fetchMany(
+    { chapter: sourceChapter },
+    500
+  );
+  if (!chapterCandidates.length) return null;
+
+  const ranked = scoreAndRank(chapterCandidates, sourceDesc);
+  if (!ranked.length || ranked[0].sim < 0.08) return null;
+
+  const best = ranked[0];
+  const confidence = Math.min(30, Math.round(best.sim * 50));
+  return {
+    ...best,
+    confidence,
+    matchMethod: "chapter_description_scored",
+    similarityScore: best.sim,
+  };
 }
 
 app.get("/api/v1/match/:code", async (req, res) => {
@@ -1085,8 +1099,8 @@ app.get("/api/v1/match/:code", async (req, res) => {
   await saveMapping("IN", closestIndia, code);
 
   const confidenceLabel = (c: number): string => {
-    if (c >= 85) return "Strong match";
-    if (c >= 65) return "Good match";
+    if (c >= 80) return "Strong match";
+    if (c >= 60) return "Good match";
     if (c >= 40) return "Approximate — verify recommended";
     return "Weak match — manual verification required";
   };
