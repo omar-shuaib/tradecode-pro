@@ -766,7 +766,7 @@ async function findClosestMatch(
         dutyRate: existing.china.mfnDutyRate ? Number(existing.china.mfnDutyRate) : null,
         secondaryRate: existing.china.vatRate ? Number(existing.china.vatRate) : null,
         confidence: Math.round(Number(existing.matchConfidence) * 100),
-        matchMethod: existing.matchMethod.replace(/_cached+$/, "") + "_cached",
+        matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
         similarityScore: Number(existing.matchConfidence),
       };
     }
@@ -785,7 +785,7 @@ async function findClosestMatch(
         dutyRate: existing.india.bcdRate ? Number(existing.india.bcdRate) : null,
         secondaryRate: existing.india.igstRate ? Number(existing.india.igstRate) : null,
         confidence: Math.round(Number(existing.matchConfidence) * 100),
-        matchMethod: existing.matchMethod.replace(/_cached+$/, "") + "_cached",
+        matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
         similarityScore: Number(existing.matchConfidence),
       };
     }
@@ -1067,11 +1067,11 @@ app.get("/api/v1/match/:code", async (req, res) => {
             chinaHsCode8: result.hsCode,
             indiaHsCode: sourceCode,
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
+            matchMethod: result.matchMethod.replace(/(?:_cached)+$/, ""),
           },
           update: {
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
+            matchMethod: result.matchMethod.replace(/(?:_cached)+$/, ""),
           },
         });
       }
@@ -1085,11 +1085,11 @@ app.get("/api/v1/match/:code", async (req, res) => {
             chinaHsCode8: sourceCode,
             indiaHsCode: result.hsCode,
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
+            matchMethod: result.matchMethod.replace(/(?:_cached)+$/, ""),
           },
           update: {
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
+            matchMethod: result.matchMethod.replace(/(?:_cached)+$/, ""),
           },
         });
       }
