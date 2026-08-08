@@ -5,6 +5,8 @@ import { Search, Globe, CheckCircle, AlertTriangle, Shield, Info } from "lucide-
 import { api } from "../lib/api";
 import { useTranslation } from "../lib/i18n";
 import { cn } from "../lib/utils";
+import { DutyCalculator } from "./DutyCalculator";
+import { DutyDisclaimer } from "./DutyDisclaimer";
 
 type MatchSide = {
   hsCode: string;
@@ -357,6 +359,12 @@ export function ComparisonView() {
   const india = row?.india ?? null;
   const uae = row?.uae ?? null;
 
+  const calcCode = (c: "CN" | "IN" | "AE"): string | null => {
+    if (c === "CN") return china?.hsCode ?? row?.closestChina?.hsCode ?? null;
+    if (c === "IN") return india?.hsCode ?? row?.closestIndia?.hsCode ?? null;
+    return uae?.hsCode ?? row?.closestUae?.hsCode ?? null;
+  };
+
   const cnFlags = [
     china?.dutyRate != null && china.dutyRate >= 12
       ? { icon: AlertTriangle, label: t("compare.high.mfn"), tone: "warn" as const }
@@ -506,81 +514,108 @@ export function ComparisonView() {
             className="compare-grid-responsive"
           >
             {china ? (
-              <SideCard
-                title="CN"
-                country={t("compare.cn.customs")}
-                code={china.hsCode}
-                desc={china.descriptionEn}
-                sub={china.descriptionLocal}
-                rateLabel={t("compare.mfn")}
-                duty={china.dutyRate ?? null}
-                secondary={china.secondaryRate ?? null}
-                extra={
-                  china.supervisoryConditions
-                    ? t("compare.supervisory.yes", { v: china.supervisoryConditions })
-                    : t("compare.supervisory.no")
-                }
-                flags={cnFlags.length ? cnFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
-              />
+              <div key="cn-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <SideCard
+                  title="CN"
+                  country={t("compare.cn.customs")}
+                  code={china.hsCode}
+                  desc={china.descriptionEn}
+                  sub={china.descriptionLocal}
+                  rateLabel={t("compare.mfn")}
+                  duty={china.dutyRate ?? null}
+                  secondary={china.secondaryRate ?? null}
+                  extra={
+                    china.supervisoryConditions
+                      ? t("compare.supervisory.yes", { v: china.supervisoryConditions })
+                      : t("compare.supervisory.no")
+                  }
+                  flags={cnFlags.length ? cnFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
+                />
+                <DutyDisclaimer />
+              </div>
             ) : row.closestChina ? (
-              <ClosestMatchCard title="CN" country={t("compare.cn.customs")} match={row.closestChina} t={t} />
+              <div key="cn-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <ClosestMatchCard title="CN" country={t("compare.cn.customs")} match={row.closestChina} t={t} />
+                <DutyDisclaimer />
+              </div>
             ) : (
-              <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
-                <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
-                <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
-                  {t("popup.no.china")}
-                </p>
+              <div key="cn-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
+                  <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
+                  <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
+                    {t("popup.no.china")}
+                  </p>
+                </div>
+                <DutyDisclaimer />
               </div>
             )}
 
             {india ? (
-              <SideCard
-                title="IN"
-                country={t("compare.in.customs")}
-                code={india.hsCode}
-                desc={india.descriptionEn}
-                sub={india.descriptionLocal}
-                rateLabel={t("compare.bcd")}
-                duty={india.dutyRate ?? null}
-                secondary={india.secondaryRate ?? null}
-                extra={
-                  india.importPolicy
-                    ? t("compare.policy.yes", { v: india.importPolicy })
-                    : t("compare.policy.no")
-                }
-                flags={inFlags.length ? inFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
-              />
+              <div key="in-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <SideCard
+                  title="IN"
+                  country={t("compare.in.customs")}
+                  code={india.hsCode}
+                  desc={india.descriptionEn}
+                  sub={india.descriptionLocal}
+                  rateLabel={t("compare.bcd")}
+                  duty={india.dutyRate ?? null}
+                  secondary={india.secondaryRate ?? null}
+                  extra={
+                    india.importPolicy
+                      ? t("compare.policy.yes", { v: india.importPolicy })
+                      : t("compare.policy.no")
+                  }
+                  flags={inFlags.length ? inFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
+                />
+                <DutyDisclaimer />
+              </div>
             ) : row.closestIndia ? (
-              <ClosestMatchCard title="IN" country={t("compare.in.customs")} match={row.closestIndia} t={t} />
+              <div key="in-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <ClosestMatchCard title="IN" country={t("compare.in.customs")} match={row.closestIndia} t={t} />
+                <DutyDisclaimer />
+              </div>
             ) : (
-              <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
-                <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
-                <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
-                  {t("popup.no.india")}
-                </p>
+              <div key="in-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
+                  <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
+                  <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
+                    {t("popup.no.india")}
+                  </p>
+                </div>
+                <DutyDisclaimer />
               </div>
             )}
 
             {uae ? (
-              <SideCard
-                title="AE"
-                country={t("compare.ae.customs")}
-                code={uae.hsCode}
-                desc={uae.descriptionEn}
-                sub={uae.descriptionLocal}
-                rateLabel={t("popup.customs.duty")}
-                duty={uae.dutyRate ?? null}
-                secondary={uae.secondaryRate ?? null}
-                flags={aeFlags.length ? aeFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
-              />
+              <div key="ae-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <SideCard
+                  title="AE"
+                  country={t("compare.ae.customs")}
+                  code={uae.hsCode}
+                  desc={uae.descriptionEn}
+                  sub={uae.descriptionLocal}
+                  rateLabel={t("popup.customs.duty")}
+                  duty={uae.dutyRate ?? null}
+                  secondary={uae.secondaryRate ?? null}
+                  flags={aeFlags.length ? aeFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
+                />
+                <DutyDisclaimer />
+              </div>
             ) : row.closestUae ? (
-              <ClosestMatchCard title="AE" country={t("compare.ae.customs")} match={row.closestUae} t={t} />
+              <div key="ae-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <ClosestMatchCard title="AE" country={t("compare.ae.customs")} match={row.closestUae} t={t} />
+                <DutyDisclaimer />
+              </div>
             ) : (
-              <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
-                <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
-                <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
-                  {t("popup.no.uae")}
-                </p>
+              <div key="ae-col" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, justifyContent: "center", alignItems: "center" }}>
+                  <Globe style={{ width: 32, height: 32, color: "var(--text-muted)" }} />
+                  <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", textAlign: "center" }}>
+                    {t("popup.no.uae")}
+                  </p>
+                </div>
+                <DutyDisclaimer />
               </div>
             )}
           </div>
@@ -613,6 +648,12 @@ export function ComparisonView() {
               </div>
             </div>
           )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 28 }}>
+            {(["CN", "IN", "AE"] as const).map((c) =>
+              calcCode(c) ? <DutyCalculator key={c} country={c} hsCode={calcCode(c)!} /> : null
+            )}
+          </div>
         </>
       )}
 

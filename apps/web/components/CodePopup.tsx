@@ -7,6 +7,7 @@ import { useTranslation } from "../lib/i18n";
 import { cn } from "../lib/utils";
 import { CompliancePanel } from "./CompliancePanel";
 import { DutyDisclaimer } from "./DutyDisclaimer";
+import { ExportMenu } from "./ExportMenu";
 
 type CountrySide = {
   country: "CN" | "IN" | "AE";
@@ -903,6 +904,10 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
           {china && <CompliancePanel code={china} />}
           {india && <CompliancePanel code={india} />}
           {uae && <CompliancePanel code={uae} />}
+        </div>
+
+        <div style={{ padding: "0 20px 20px" }}>
+          <ExportMenu data={{ code, match }} />
         </div>
 
         <div style={{ padding: "0 20px 20px" }}>

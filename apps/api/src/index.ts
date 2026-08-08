@@ -740,88 +740,213 @@ async function findClosestMatch(
   sourceDesc: string,
   sourceChapter: string,
   targetCountry: "CN" | "IN" | "AE",
-): Promise<{ hsCode: string; descriptionEn: string; descriptionLocal?: string; chapter: string; dutyRate: number | null; secondaryRate: number | null; confidence: number } | null> {
-  const sourcePrefix4 = sourceCode.substring(0, 4);
-
-  type Candidate = { hsCode: string; descriptionEn: string; descriptionLocal: string; chapter: string; dutyRate: number | null; secondaryRate: number | null };
-
-  async function fetchCandidates(whereClause: any, take: number): Promise<Candidate[]> {
-    if (targetCountry === "CN") {
-      const rows = await db.chinaHsCode.findMany({ where: whereClause, take });
-      return rows.map(r => ({
-        hsCode: r.hsCode8, descriptionEn: r.descriptionEn, descriptionLocal: r.descriptionZh,
-        chapter: r.chapter, dutyRate: r.mfnDutyRate ? Number(r.mfnDutyRate) : null,
-        secondaryRate: r.vatRate ? Number(r.vatRate) : null,
-      }));
-    } else if (targetCountry === "IN") {
-      const rows = await db.indiaHsCode.findMany({ where: whereClause, take });
-      return rows.map(r => ({
-        hsCode: r.hsCode, descriptionEn: r.descriptionEn, descriptionLocal: r.descriptionHi ?? "",
-        chapter: r.chapter, dutyRate: r.bcdRate ? Number(r.bcdRate) : null,
-        secondaryRate: r.igstRate ? Number(r.igstRate) : null,
-      }));
-    } else {
-      const rows = await db.uaeHsCode.findMany({ where: whereClause, take });
-      return rows.map(r => ({
-        hsCode: r.hsCode, descriptionEn: r.descriptionEn, descriptionLocal: r.descriptionAr ?? "",
-        chapter: r.chapter, dutyRate: Number(r.customsDutyRate), secondaryRate: Number(r.vatRate),
-      }));
+): Promise<{
+  hsCode: string;
+  descriptionEn: string;
+  descriptionLocal?: string;
+  chapter: string;
+  dutyRate: number | null;
+  secondaryRate: number | null;
+  confidence: number;
+  matchMethod: string;
+  similarityScore: number;
+} | null> {
+  // Check cached CN↔IN mappings first
+  if (targetCountry === "CN") {
+    const existing = await db.bilateralMapping.findFirst({
+      where: { indiaHsCode: sourceCode },
+      include: { china: true },
+    });
+    if (existing) {
+      return {
+        hsCode: existing.china.hsCode8,
+        descriptionEn: existing.china.descriptionEn,
+        descriptionLocal: existing.china.descriptionZh ?? "",
+        chapter: existing.china.chapter,
+        dutyRate: existing.china.mfnDutyRate ? Number(existing.china.mfnDutyRate) : null,
+        secondaryRate: existing.china.vatRate ? Number(existing.china.vatRate) : null,
+        confidence: Math.round(Number(existing.matchConfidence) * 100),
+        matchMethod: existing.matchMethod + "_cached",
+        similarityScore: Number(existing.matchConfidence),
+      };
+    }
+  }
+  if (targetCountry === "IN") {
+    const existing = await db.bilateralMapping.findFirst({
+      where: { chinaHsCode8: sourceCode },
+      include: { india: true },
+    });
+    if (existing) {
+      return {
+        hsCode: existing.india.hsCode,
+        descriptionEn: existing.india.descriptionEn,
+        descriptionLocal: existing.india.descriptionHi ?? "",
+        chapter: existing.india.chapter,
+        dutyRate: existing.india.bcdRate ? Number(existing.india.bcdRate) : null,
+        secondaryRate: existing.india.igstRate ? Number(existing.india.igstRate) : null,
+        confidence: Math.round(Number(existing.matchConfidence) * 100),
+        matchMethod: existing.matchMethod + "_cached",
+        similarityScore: Number(existing.matchConfidence),
+      };
     }
   }
 
-  function codeField(): string {
-    return targetCountry === "CN" ? "hsCode8" : "hsCode";
+  // ── Description similarity (Jaccard token overlap) ──────────
+  function descSimilarity(a: string, b: string): number {
+    const stopwords = new Set([
+      "and","or","of","the","for","in","to","a","an","other",
+      "not","with","including","than","more","used","similar",
+      "products","goods","articles","specified","like","such",
+      "whether","being","those","their","which","from","its",
+      "has","are","is","as","by","at","on","into","out",
+    ]);
+    const tok = (s: string) =>
+      s.toLowerCase()
+       .replace(/[^a-z0-9\s]/g, " ")
+       .split(/\s+/)
+       .filter(t => t.length > 2 && !stopwords.has(t));
+    const ta = new Set(tok(a));
+    const tb = new Set(tok(b));
+    if (!ta.size || !tb.size) return 0;
+    let overlap = 0;
+    for (const t of ta) if (tb.has(t)) overlap++;
+    const union = new Set([...ta, ...tb]).size;
+    return overlap / union;
   }
 
-  const prefixCandidates = await fetchCandidates({
-    chapter: sourceChapter,
-    [codeField()]: { startsWith: sourcePrefix4 },
-  }, 20);
-
-  if (prefixCandidates.length > 0) {
-    const best = prefixCandidates[0];
-    const exactCount = prefixCandidates.filter(c => c.hsCode.substring(0, 6) === sourceCode.substring(0, 6)).length;
-    const confidence = exactCount > 0 ? 85 : 70;
-    return { ...best, confidence };
-  }
-
-  const chapterCandidates = await fetchCandidates({ chapter: sourceChapter }, 300);
-
-  if (!chapterCandidates.length) return null;
-
-  const sourceWords = sourceDesc
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter(t => t.length >= 3 && !/^\d+$/.test(t))
-    .slice(0, 12);
-
-  const scored = chapterCandidates.map(c => {
-    const cLower = c.descriptionEn.toLowerCase();
-    const exactWords = sourceWords.filter(t => cLower.includes(t)).length;
-    const partialWords = sourceWords.filter(t =>
-      cLower.split(/\s+/).some(ct => ct.includes(t) || t.includes(ct))
-    ).length;
-    const wordScore = Math.max(exactWords, partialWords) / Math.max(sourceWords.length, 1);
-    return { ...c, score: wordScore };
-  }).sort((a, b) => b.score - a.score);
-
-  const best = scored[0];
-  if (best.score < 0.15) return null;
-
-  const confidence = Math.min(65, Math.round(best.score * 100));
-  return {
-    hsCode: best.hsCode, descriptionEn: best.descriptionEn, descriptionLocal: best.descriptionLocal,
-    chapter: best.chapter, dutyRate: best.dutyRate, secondaryRate: best.secondaryRate, confidence,
+  type Candidate = {
+    hsCode: string;
+    descriptionEn: string;
+    descriptionLocal: string;
+    chapter: string;
+    dutyRate: number | null;
+    secondaryRate: number | null;
   };
+
+  async function fetchByCode(code: string): Promise<Candidate | null> {
+    if (targetCountry === "CN") {
+      const r = await db.chinaHsCode.findUnique({ where: { hsCode8: code } });
+      if (!r) return null;
+      return { hsCode: r.hsCode8, descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionZh ?? "", chapter: r.chapter,
+        dutyRate: r.mfnDutyRate ? Number(r.mfnDutyRate) : null,
+        secondaryRate: r.vatRate ? Number(r.vatRate) : null };
+    } else if (targetCountry === "IN") {
+      const r = await db.indiaHsCode.findUnique({ where: { hsCode: code } });
+      if (!r) return null;
+      return { hsCode: r.hsCode, descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionHi ?? "", chapter: r.chapter,
+        dutyRate: r.bcdRate ? Number(r.bcdRate) : null,
+        secondaryRate: r.igstRate ? Number(r.igstRate) : null };
+    } else {
+      const r = await db.uaeHsCode.findUnique({ where: { hsCode: code } });
+      if (!r) return null;
+      return { hsCode: r.hsCode, descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionAr ?? "", chapter: r.chapter,
+        dutyRate: Number(r.customsDutyRate),
+        secondaryRate: Number(r.vatRate) };
+    }
+  }
+
+  async function fetchMany(where: any, take: number): Promise<Candidate[]> {
+    if (targetCountry === "CN") {
+      const rows = await db.chinaHsCode.findMany({ where, take });
+      return rows.map(r => ({ hsCode: r.hsCode8, descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionZh ?? "", chapter: r.chapter,
+        dutyRate: r.mfnDutyRate ? Number(r.mfnDutyRate) : null,
+        secondaryRate: r.vatRate ? Number(r.vatRate) : null }));
+    } else if (targetCountry === "IN") {
+      const rows = await db.indiaHsCode.findMany({ where, take });
+      return rows.map(r => ({ hsCode: r.hsCode, descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionHi ?? "", chapter: r.chapter,
+        dutyRate: r.bcdRate ? Number(r.bcdRate) : null,
+        secondaryRate: r.igstRate ? Number(r.igstRate) : null }));
+    } else {
+      const rows = await db.uaeHsCode.findMany({ where, take });
+      return rows.map(r => ({ hsCode: r.hsCode, descriptionEn: r.descriptionEn,
+        descriptionLocal: r.descriptionAr ?? "", chapter: r.chapter,
+        dutyRate: Number(r.customsDutyRate),
+        secondaryRate: Number(r.vatRate) }));
+    }
+  }
+
+  const codeField = targetCountry === "CN" ? "hsCode8" : "hsCode";
+
+  // STEP 1 — Exact 8-digit match
+  const exact = await fetchByCode(sourceCode);
+  if (exact) {
+    return { ...exact, confidence: 95, matchMethod: "exact_8digit",
+      similarityScore: 1.0 };
+  }
+
+  // STEP 2 — 6-digit prefix match
+  const prefix6 = sourceCode.substring(0, 6);
+  const six = await fetchMany(
+    { [codeField]: { startsWith: prefix6 } }, 20
+  );
+  if (six.length === 1) {
+    const sim = descSimilarity(sourceDesc, six[0].descriptionEn);
+    return { ...six[0], confidence: 85, matchMethod: "exact_6digit",
+      similarityScore: sim };
+  }
+  if (six.length > 1) {
+    const scored = six
+      .map(c => ({ ...c, sim: descSimilarity(sourceDesc, c.descriptionEn) }))
+      .sort((a, b) => b.sim - a.sim);
+    const best = scored[0];
+    return { ...best, confidence: 75, matchMethod: "6digit_multi",
+      similarityScore: best.sim };
+  }
+
+  // STEP 3 — 4-digit prefix match scored by description similarity
+  const prefix4 = sourceCode.substring(0, 4);
+  const four = await fetchMany(
+    { [codeField]: { startsWith: prefix4 } }, 100
+  );
+  if (four.length > 0) {
+    const scored = four
+      .map(c => ({ ...c, sim: descSimilarity(sourceDesc, c.descriptionEn) }))
+      .sort((a, b) => b.sim - a.sim);
+    const best = scored[0];
+    if (best.sim < 0.05) {
+      // Even the best 4-digit match has almost no description overlap
+      // Fall through to chapter match
+    } else {
+      const confidence = Math.min(60, Math.round(best.sim * 100));
+      return { ...best, confidence, matchMethod: "4digit_description_scored",
+        similarityScore: best.sim };
+    }
+  }
+
+  // STEP 4 — Chapter match scored by description similarity
+  const chapter = await fetchMany({ chapter: sourceChapter }, 500);
+  if (!chapter.length) return null;
+  const scoredChapter = chapter
+    .map(c => ({ ...c, sim: descSimilarity(sourceDesc, c.descriptionEn) }))
+    .sort((a, b) => b.sim - a.sim);
+  const best = scoredChapter[0];
+  if (best.sim < 0.05) return null;
+  const confidence = Math.min(35, Math.round(best.sim * 100));
+  return { ...best, confidence, matchMethod: "chapter_description_scored",
+    similarityScore: best.sim };
 }
 
 app.get("/api/v1/match/:code", async (req, res) => {
   const code = req.params.code;
+  const fromCountry = (req.query.from as string ?? "").toUpperCase();
 
-  const cnRow = await db.chinaHsCode.findUnique({ where: { hsCode8: code } }).catch(() => null);
-  const inRow = await db.indiaHsCode.findUnique({ where: { hsCode: code } }).catch(() => null);
-  const aeRow = await db.uaeHsCode.findUnique({ where: { hsCode: code } }).catch(() => null);
+  const lookUpExact = (c: "CN" | "IN" | "AE") =>
+    !fromCountry || fromCountry === "BOTH" || fromCountry === c;
+
+  const cnRow = lookUpExact("CN")
+    ? await db.chinaHsCode.findUnique({ where: { hsCode8: code } }).catch(() => null)
+    : null;
+  const inRow = lookUpExact("IN")
+    ? await db.indiaHsCode.findUnique({ where: { hsCode: code } }).catch(() => null)
+    : null;
+  const aeRow = lookUpExact("AE")
+    ? await db.uaeHsCode.findUnique({ where: { hsCode: code } }).catch(() => null)
+    : null;
 
   const china = cnRow
     ? {
@@ -841,7 +966,7 @@ app.get("/api/v1/match/:code", async (req, res) => {
         dataSource: cnRow.dataSource ?? "database",
         lastUpdated: cnRow.lastUpdated?.toISOString() ?? "",
       }
-    : (await getChinaCode(code));
+    : (lookUpExact("CN") ? await getChinaCode(code) : null);
 
   const india = inRow
     ? {
@@ -861,7 +986,7 @@ app.get("/api/v1/match/:code", async (req, res) => {
         dataSource: inRow.dataSource ?? "database",
         lastUpdated: inRow.lastUpdated?.toISOString() ?? "",
       }
-    : (await getIndiaCode(code));
+    : (lookUpExact("IN") ? await getIndiaCode(code) : null);
 
   const uae = aeRow
     ? {
@@ -881,7 +1006,7 @@ app.get("/api/v1/match/:code", async (req, res) => {
         dataSource: aeRow.dataSource ?? "database",
         lastUpdated: aeRow.lastUpdated?.toISOString() ?? "",
       }
-    : (await getUaeCode(code));
+    : (lookUpExact("AE") ? await getUaeCode(code) : null);
 
   if (!china && !india && !uae) {
     return res.json([]);
@@ -892,19 +1017,81 @@ app.get("/api/v1/match/:code", async (req, res) => {
   const sourceDesc = (china?.descriptionEn ?? india?.descriptionEn ?? uae?.descriptionEn ?? "").trim();
   const sourceChapter = code.substring(0, 2);
 
+  const needsClosest = (c: "CN" | "IN" | "AE"): boolean => {
+    if (!fromCountry || fromCountry === "BOTH") {
+      return c === "CN" ? !china : c === "IN" ? !india : !uae;
+    }
+    return fromCountry !== c;
+  };
+
   let closestChina = null;
   let closestIndia = null;
   let closestUae = null;
 
-  if (!china && sourceDesc && sourceChapter) {
+  if (needsClosest("CN") && sourceDesc && sourceChapter) {
     closestChina = await findClosestMatch(code, sourceDesc, sourceChapter, "CN");
   }
-  if (!india && sourceDesc && sourceChapter) {
+  if (needsClosest("IN") && sourceDesc && sourceChapter) {
     closestIndia = await findClosestMatch(code, sourceDesc, sourceChapter, "IN");
   }
-  if (!uae && sourceDesc && sourceChapter) {
+  if (needsClosest("AE") && sourceDesc && sourceChapter) {
     closestUae = await findClosestMatch(code, sourceDesc, sourceChapter, "AE");
   }
+
+  const saveMapping = async (targetCountry: "CN" | "IN", result: any, sourceCode: string) => {
+    try {
+      if (targetCountry === "CN" && result) {
+        await db.bilateralMapping.upsert({
+          where: { chinaHsCode8_indiaHsCode: {
+            chinaHsCode8: result.hsCode,
+            indiaHsCode: sourceCode,
+          }},
+          create: {
+            chinaHsCode8: result.hsCode,
+            indiaHsCode: sourceCode,
+            matchConfidence: result.confidence / 100,
+            matchMethod: result.matchMethod,
+          },
+          update: {
+            matchConfidence: result.confidence / 100,
+            matchMethod: result.matchMethod,
+          },
+        });
+      }
+      if (targetCountry === "IN" && result) {
+        await db.bilateralMapping.upsert({
+          where: { chinaHsCode8_indiaHsCode: {
+            chinaHsCode8: sourceCode,
+            indiaHsCode: result.hsCode,
+          }},
+          create: {
+            chinaHsCode8: sourceCode,
+            indiaHsCode: result.hsCode,
+            matchConfidence: result.confidence / 100,
+            matchMethod: result.matchMethod,
+          },
+          update: {
+            matchConfidence: result.confidence / 100,
+            matchMethod: result.matchMethod,
+          },
+        });
+      }
+    } catch {
+      // do not let a mapping save failure break the response
+    }
+  };
+
+  await saveMapping("CN", closestChina, code);
+  await saveMapping("IN", closestIndia, code);
+
+  const confidenceLabel = (c: number): string => {
+    if (c >= 85) return "Strong match";
+    if (c >= 65) return "Good match";
+    if (c >= 40) return "Approximate — verify recommended";
+    return "Weak match — manual verification required";
+  };
+
+  const withLabel = (m: any) => (m ? { ...m, confidenceLabel: confidenceLabel(m.confidence) } : null);
 
   res.json([{
     id: 1,
@@ -913,9 +1100,9 @@ app.get("/api/v1/match/:code", async (req, res) => {
     china,
     india,
     uae,
-    closestChina,
-    closestIndia,
-    closestUae,
+    closestChina: withLabel(closestChina),
+    closestIndia: withLabel(closestIndia),
+    closestUae: withLabel(closestUae),
   }]);
 });
 

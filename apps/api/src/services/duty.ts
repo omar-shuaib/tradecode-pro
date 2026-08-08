@@ -94,7 +94,7 @@ function pickUae(code: string) {
 export async function calculate(country: "CN" | "IN" | "AE", hsCode: string, cif: number, landing = 0) {
   const fx = await rates();
   const target = country === "IN" ? "INR" : country === "AE" ? "AED" : "CNY";
-  const rate = fx[target] ?? { rate: country === "AE" ? 3.6725 : 1, date: "unknown" };
+  const rate = fx[target] ?? { rate: 1, date: "unknown" };
 
   if (country === "AE") {
     const row = await db.uaeHsCode.findUnique({ where: { hsCode } }).catch(() => null);
