@@ -766,7 +766,7 @@ async function findClosestMatch(
         dutyRate: existing.china.mfnDutyRate ? Number(existing.china.mfnDutyRate) : null,
         secondaryRate: existing.china.vatRate ? Number(existing.china.vatRate) : null,
         confidence: Math.round(Number(existing.matchConfidence) * 100),
-        matchMethod: existing.matchMethod + "_cached",
+        matchMethod: existing.matchMethod.replace(/_cached+$/, "") + "_cached",
         similarityScore: Number(existing.matchConfidence),
       };
     }
@@ -785,7 +785,7 @@ async function findClosestMatch(
         dutyRate: existing.india.bcdRate ? Number(existing.india.bcdRate) : null,
         secondaryRate: existing.india.igstRate ? Number(existing.india.igstRate) : null,
         confidence: Math.round(Number(existing.matchConfidence) * 100),
-        matchMethod: existing.matchMethod + "_cached",
+        matchMethod: existing.matchMethod.replace(/_cached+$/, "") + "_cached",
         similarityScore: Number(existing.matchConfidence),
       };
     }
@@ -890,11 +890,12 @@ async function findClosestMatch(
       const confidence = isOnlyCandidate
         ? Math.min(85, 60 + Math.round(best.sim * 30))
         : Math.min(80, Math.round(best.sim * 100));
+      const { sim, ...rest } = best;
       return {
-        ...best,
+        ...rest,
         confidence,
         matchMethod: "6digit_description_scored",
-        similarityScore: best.sim,
+        similarityScore: sim,
       };
     }
   }
@@ -913,11 +914,12 @@ async function findClosestMatch(
     if (ranked.length > 0 && ranked[0].sim >= 0.08) {
       const best = ranked[0];
       const confidence = Math.min(55, Math.round(best.sim * 80));
+      const { sim, ...rest } = best;
       return {
-        ...best,
+        ...rest,
         confidence,
         matchMethod: "4digit_description_scored",
-        similarityScore: best.sim,
+        similarityScore: sim,
       };
     }
   }
@@ -937,11 +939,12 @@ async function findClosestMatch(
 
   const best = ranked[0];
   const confidence = Math.min(30, Math.round(best.sim * 50));
+  const { sim, ...rest } = best;
   return {
-    ...best,
+    ...rest,
     confidence,
     matchMethod: "chapter_description_scored",
-    similarityScore: best.sim,
+    similarityScore: sim,
   };
 }
 
@@ -1064,11 +1067,11 @@ app.get("/api/v1/match/:code", async (req, res) => {
             chinaHsCode8: result.hsCode,
             indiaHsCode: sourceCode,
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod,
+            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
           },
           update: {
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod,
+            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
           },
         });
       }
@@ -1082,11 +1085,11 @@ app.get("/api/v1/match/:code", async (req, res) => {
             chinaHsCode8: sourceCode,
             indiaHsCode: result.hsCode,
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod,
+            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
           },
           update: {
             matchConfidence: result.confidence / 100,
-            matchMethod: result.matchMethod,
+            matchMethod: result.matchMethod.replace(/_cached+$/, ""),
           },
         });
       }
