@@ -40,6 +40,7 @@ type MatchRow = {
   closestIndia?: ClosestMatch;
   closestUae?: ClosestMatch;
   matchConfidence?: number;
+  sameCodeBothCountries?: boolean;
 };
 
 function RateBar({ value, max = 30 }: { value?: number | null; max?: number }) {
@@ -505,6 +506,27 @@ export function ComparisonView() {
 
       {row && (
         <>
+          {row.sameCodeBothCountries && (
+            <div
+              className="card animate-slide-up"
+              style={{
+                padding: "14px 24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                marginBottom: 20,
+                border: "1px solid var(--success)",
+                backgroundColor: "var(--success-light)",
+              }}
+            >
+              <CheckCircle style={{ width: 18, height: 18, color: "var(--success)" }} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--success)" }}>
+                {t("compare.same.code")}
+              </span>
+            </div>
+          )}
+
           <div
             style={{
               display: "grid",

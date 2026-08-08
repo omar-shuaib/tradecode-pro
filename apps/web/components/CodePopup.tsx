@@ -56,6 +56,7 @@ type MatchRow = {
     secondaryRate: number | null;
     confidence: number;
   } | null;
+  sameCodeBothCountries?: boolean;
 };
 
 type DutyLine = { label: string; amount: number };
@@ -630,6 +631,27 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
             </p>
           )}
         </div>
+
+        {match?.sameCodeBothCountries && (
+          <div
+            style={{
+              margin: "4px 20px 0",
+              padding: "12px 20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--success)",
+              backgroundColor: "var(--success-light)",
+            }}
+          >
+            <CheckCircle style={{ width: 18, height: 18, color: "var(--success)" }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--success)" }}>
+              {t("compare.same.code")}
+            </span>
+          </div>
+        )}
 
         <div
           style={{

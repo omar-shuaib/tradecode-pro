@@ -751,46 +751,6 @@ async function findClosestMatch(
   matchMethod: string;
   similarityScore: number;
 } | null> {
-  // Check cached CN↔IN mappings first
-  if (targetCountry === "CN") {
-    const existing = await db.bilateralMapping.findFirst({
-      where: { indiaHsCode: sourceCode },
-      include: { china: true },
-    });
-    if (existing) {
-      return {
-        hsCode: existing.china.hsCode8,
-        descriptionEn: existing.china.descriptionEn,
-        descriptionLocal: existing.china.descriptionZh ?? "",
-        chapter: existing.china.chapter,
-        dutyRate: existing.china.mfnDutyRate ? Number(existing.china.mfnDutyRate) : null,
-        secondaryRate: existing.china.vatRate ? Number(existing.china.vatRate) : null,
-        confidence: Math.round(Number(existing.matchConfidence) * 100),
-        matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
-        similarityScore: Number(existing.matchConfidence),
-      };
-    }
-  }
-  if (targetCountry === "IN") {
-    const existing = await db.bilateralMapping.findFirst({
-      where: { chinaHsCode8: sourceCode },
-      include: { india: true },
-    });
-    if (existing) {
-      return {
-        hsCode: existing.india.hsCode,
-        descriptionEn: existing.india.descriptionEn,
-        descriptionLocal: existing.india.descriptionHi ?? "",
-        chapter: existing.india.chapter,
-        dutyRate: existing.india.bcdRate ? Number(existing.india.bcdRate) : null,
-        secondaryRate: existing.india.igstRate ? Number(existing.india.igstRate) : null,
-        confidence: Math.round(Number(existing.matchConfidence) * 100),
-        matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
-        similarityScore: Number(existing.matchConfidence),
-      };
-    }
-  }
-
   // ── Jaccard token similarity on descriptions ─────────────────
   function descSimilarity(a: string, b: string): number {
     const stopwords = new Set([
@@ -813,6 +773,66 @@ async function findClosestMatch(
     for (const t of ta) if (tb.has(t)) overlap++;
     const union = new Set([...ta, ...tb]).size;
     return overlap / union;
+  }
+
+  // Confidence is driven primarily by description similarity.
+  // The step only sets the ceiling and a small starting bonus.
+  function calcConfidence(sim: number, step: "6digit" | "4digit" | "chapter"): number {
+    const ceiling = step === "6digit" ? 90 : step === "4digit" ? 65 : 40;
+    const bonus = step === "6digit" ? 10 : step === "4digit" ? 5 : 0;
+    return Math.min(ceiling, Math.round(sim * (ceiling - bonus)) + bonus);
+  }
+
+  // Check cached CN↔IN mappings first
+  if (targetCountry === "CN") {
+    const existing = await db.bilateralMapping.findFirst({
+      where: { indiaHsCode: sourceCode },
+      include: { china: true },
+    });
+    if (existing) {
+      const step = existing.matchMethod.includes("4digit")
+        ? "4digit"
+        : existing.matchMethod.includes("chapter")
+          ? "chapter"
+          : "6digit";
+      const sim = descSimilarity(sourceDesc, existing.china.descriptionEn);
+      return {
+        hsCode: existing.china.hsCode8,
+        descriptionEn: existing.china.descriptionEn,
+        descriptionLocal: existing.china.descriptionZh ?? "",
+        chapter: existing.china.chapter,
+        dutyRate: existing.china.mfnDutyRate ? Number(existing.china.mfnDutyRate) : null,
+        secondaryRate: existing.china.vatRate ? Number(existing.china.vatRate) : null,
+        confidence: calcConfidence(sim, step),
+        matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
+        similarityScore: sim,
+      };
+    }
+  }
+  if (targetCountry === "IN") {
+    const existing = await db.bilateralMapping.findFirst({
+      where: { chinaHsCode8: sourceCode },
+      include: { india: true },
+    });
+    if (existing) {
+      const step = existing.matchMethod.includes("4digit")
+        ? "4digit"
+        : existing.matchMethod.includes("chapter")
+          ? "chapter"
+          : "6digit";
+      const sim = descSimilarity(sourceDesc, existing.india.descriptionEn);
+      return {
+        hsCode: existing.india.hsCode,
+        descriptionEn: existing.india.descriptionEn,
+        descriptionLocal: existing.india.descriptionHi ?? "",
+        chapter: existing.india.chapter,
+        dutyRate: existing.india.bcdRate ? Number(existing.india.bcdRate) : null,
+        secondaryRate: existing.india.igstRate ? Number(existing.india.igstRate) : null,
+        confidence: calcConfidence(sim, step),
+        matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
+        similarityScore: sim,
+      };
+    }
   }
 
   type Candidate = {
@@ -883,13 +903,7 @@ async function findClosestMatch(
     const ranked = scoreAndRank(sixCandidates, sourceDesc);
     if (ranked.length > 0 && ranked[0].sim > 0) {
       const best = ranked[0];
-      // If multiple candidates exist, pick by description score.
-      // If only one exists, it is a reasonable match but still
-      // score it so confidence reflects actual description overlap.
-      const isOnlyCandidate = sixCandidates.length === 1;
-      const confidence = isOnlyCandidate
-        ? Math.min(85, 60 + Math.round(best.sim * 30))
-        : Math.min(80, Math.round(best.sim * 100));
+      const confidence = calcConfidence(best.sim, "6digit");
       const { sim, ...rest } = best;
       return {
         ...rest,
@@ -913,7 +927,7 @@ async function findClosestMatch(
     const ranked = scoreAndRank(fourCandidates, sourceDesc);
     if (ranked.length > 0 && ranked[0].sim >= 0.08) {
       const best = ranked[0];
-      const confidence = Math.min(55, Math.round(best.sim * 80));
+      const confidence = calcConfidence(best.sim, "4digit");
       const { sim, ...rest } = best;
       return {
         ...rest,
@@ -938,7 +952,7 @@ async function findClosestMatch(
   if (!ranked.length || ranked[0].sim < 0.08) return null;
 
   const best = ranked[0];
-  const confidence = Math.min(30, Math.round(best.sim * 50));
+  const confidence = calcConfidence(best.sim, "chapter");
   const { sim, ...rest } = best;
   return {
     ...rest,
@@ -1110,10 +1124,17 @@ app.get("/api/v1/match/:code", async (req, res) => {
 
   const withLabel = (m: any) => (m ? { ...m, confidenceLabel: confidenceLabel(m.confidence) } : null);
 
+  const sameCodeBothCountries =
+    !!closestChina &&
+    !!closestUae &&
+    closestChina.hsCode === closestUae.hsCode &&
+    closestChina.descriptionEn.trim() === closestUae.descriptionEn.trim();
+
   res.json([{
     id: 1,
     matchConfidence: confidence,
     matchMethod: china && india ? "exact-bilateral" : "single-country",
+    sameCodeBothCountries,
     china,
     india,
     uae,
