@@ -144,16 +144,18 @@ export default function ClassifyPage() {
   const items = (result?.results ?? []).map(normalizeResult);
 
   // Group by country, each already sorted by confidence from backend
-  const byCountry = {
+  const byCountry: Record<string, ClassifiedItem[]> = {
     CN: items.filter((i: ClassifiedItem) => i.country === "CN"),
     IN: items.filter((i: ClassifiedItem) => i.country === "IN"),
     AE: items.filter((i: ClassifiedItem) => i.country === "AE"),
+    OTHER: items.filter((i: ClassifiedItem) => !["CN", "IN", "AE"].includes(i.country)),
   };
 
   const countryMeta: Record<string, { label: string; color: string; bg: string }> = {
     CN: { label: "China", color: "var(--warning)", bg: "var(--warning-light)" },
     IN: { label: "India", color: "var(--success)", bg: "var(--success-light)" },
     AE: { label: "UAE", color: "var(--country-ae-text)", bg: "var(--country-ae-bg)" },
+    OTHER: { label: "All countries", color: "var(--text-secondary)", bg: "var(--bg-elevated)" },
   };
 
   return (
@@ -321,7 +323,8 @@ export default function ClassifyPage() {
                         {countryItems.map((item: ClassifiedItem, i: number) => {
                           const hasComplianceNote = item.requiresLicence || item.isRestricted || item.isProhibited;
                           const dutyHigh = code === "CN" ? 13 : code === "IN" ? 15 : 10;
-                          const isHighDuty = (item.dutyRate ?? 0) >= dutyHigh;
+                          const hasDuty = item.dutyRate != null;
+                          const isHighDuty = hasDuty && item.dutyRate! >= dutyHigh;
                           const conf = item.confidence ?? Math.max(10, 90 - i * 15);
                           const isBest = i === 0 && conf >= 50;
 
@@ -414,12 +417,12 @@ export default function ClassifyPage() {
                                     fontSize: 11,
                                     fontWeight: 500,
                                     borderRadius: 9999,
-                                    backgroundColor: isHighDuty ? "var(--warning-light)" : "var(--success-light)",
-                                    color: isHighDuty ? "var(--warning)" : "var(--success)",
+                                    backgroundColor: !hasDuty ? "var(--bg-elevated)" : isHighDuty ? "var(--warning-light)" : "var(--success-light)",
+                                    color: !hasDuty ? "var(--text-muted)" : isHighDuty ? "var(--warning)" : "var(--success)",
                                   }}
                                 >
-                                  {isHighDuty ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />}
-                                  {isHighDuty ? t("classify.result.high") : t("classify.result.normal")}
+                                  {hasDuty ? (isHighDuty ? <AlertTriangle style={{ width: 11, height: 11 }} /> : <CheckCircle style={{ width: 11, height: 11 }} />) : null}
+                                  {!hasDuty ? t("classify.result.nodata") : isHighDuty ? t("classify.result.high") : t("classify.result.normal")}
                                 </span>
                                 <span
                                   style={{

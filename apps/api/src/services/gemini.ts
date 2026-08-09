@@ -23,15 +23,25 @@ Rules:
 - A "phone case" belongs in chapter 42 (bags) or 39 (plastics), NOT chapter 85 (electronics).
 - A "protein supplement" belongs in chapter 21 or 22 (food/beverage), NOT chapter 30 (pharmaceuticals).
 - Return diverse results across chapters when the product could classify in multiple ways.
+- ${country === "BOTH" ? "Spread the 5 results across China, India, and UAE so each country has at least one result." : `All 5 results must be ${country} HS codes.`}
 
-Each object MUST have: hsCode (8-digit string), descriptionEn (string), confidence (number 0-100). Rank by confidence descending.`,
+Each object MUST have: country (one of "CN", "IN", "AE"), hsCode (8-digit string), descriptionEn (string), confidence (number 0-100). Rank by confidence descending.`,
       config: { responseMimeType: "application/json", temperature: 0.1 },
     });
 
     const raw = JSON.parse(response.text ?? "[]");
-    // Normalize: ensure confidence field exists
+    const countryOrder: ("CN" | "IN" | "AE")[] = ["CN", "IN", "AE"];
+    const normalizeCountry = (value: unknown, i: number): "CN" | "IN" | "AE" => {
+      const s = String(value ?? "").toUpperCase().replace(/[\s._-]/g, "");
+      if (s === "CN" || s === "CHINA" || s === "中国") return "CN";
+      if (s === "IN" || s === "INDIA" || s === "印度") return "IN";
+      if (s === "AE" || s === "UAE" || s === "阿联酋") return "AE";
+      return countryOrder[i % countryOrder.length];
+    };
+
+    // Normalize: ensure confidence + a concrete per-item country exist
     const results = (Array.isArray(raw) ? raw : []).map((r: any, i: number) => ({
-      country,
+      country: normalizeCountry(r.country, i),
       hsCode: r.hsCode ?? r.hs_code ?? "unknown",
       descriptionEn: r.descriptionEn ?? r.description_en ?? r.description ?? "",
       confidence: typeof r.confidence === "number" ? r.confidence : Math.max(20, 90 - i * 15),

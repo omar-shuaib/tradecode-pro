@@ -1208,7 +1208,22 @@ app.post("/api/v1/classify", async (req, res) => {
   try {
     const payload = ClassifyRequestSchema.parse(req.body);
     const ai = await classify(payload.description, payload.country);
-    const results = ai ?? (await fallbackClassify(payload.description, payload.country, 15));
+    let results: any[] = ai ?? (await fallbackClassify(payload.description, payload.country, 15));
+
+    if (ai) {
+      const enriched: any[] = [];
+      for (const r of ai) {
+        const dbRow =
+          r.country === "CN" ? await getChinaCode(r.hsCode) :
+          r.country === "IN" ? await getIndiaCode(r.hsCode) :
+          await getUaeCode(r.hsCode);
+        enriched.push(dbRow
+          ? { ...r, ...dbRow, descriptionEn: r.descriptionEn || dbRow.descriptionEn || "" }
+          : r);
+      }
+      results = enriched;
+    }
+
     res.json({ fallback: !ai, results });
   } catch (err: any) {
     console.error("Classify error:", err?.message ?? err);
