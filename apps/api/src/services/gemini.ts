@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db.js";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-flash-latest";
 
 export async function classify(description: string, country: string) {
   try {
