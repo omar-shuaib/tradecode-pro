@@ -71,7 +71,7 @@ export function SearchPanel() {
   const [rows, setRows] = useState<CodeResult[]>([]);
   const [suggestions, setSuggestions] = useState<CodeResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [selectedCode, setSelectedCode] = useState<{ code: string; country: "CN" | "IN" | "AE" } | null>(null);
   const [searched, setSearched] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,9 +146,9 @@ export function SearchPanel() {
     }
   }
 
-  function handleSelect(code: string) {
+  function handleSelect(code: string, country: "CN" | "IN" | "AE") {
     setShowDropdown(false);
-    setSelectedCode(code);
+    setSelectedCode({ code, country });
     setQ(code);
     setSearched(true);
   }
@@ -294,7 +294,7 @@ export function SearchPanel() {
                 <button
                   type="button"
                   key={`${item.country}-${code}-${item.descriptionEn}`}
-                  onClick={() => handleSelect(code)}
+                  onClick={() => handleSelect(code, item.country as "CN" | "IN" | "AE")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -380,7 +380,7 @@ export function SearchPanel() {
                 >
                 <article
                   className={`card${(primary.confidence ?? 0) >= 80 ? " card-best" : ""}`}
-                  onClick={() => handleSelect(primary.hsCode)}
+                   onClick={() => handleSelect(primary.hsCode, primary.country as "CN" | "IN" | "AE")}
                   style={{
                     padding: 20,
                     cursor: "pointer",
@@ -496,7 +496,7 @@ export function SearchPanel() {
       </section>
 
       {selectedCode && (
-        <CodePopup code={selectedCode} onClose={() => setSelectedCode(null)} />
+        <CodePopup code={selectedCode.code} fromCountry={selectedCode.country} onClose={() => setSelectedCode(null)} />
       )}
     </>
   );

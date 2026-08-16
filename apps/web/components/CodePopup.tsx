@@ -365,7 +365,7 @@ function SkeletonPanel() {
   );
 }
 
-export function CodePopup({ code, onClose }: { code: string; onClose: () => void }) {
+export function CodePopup({ code, fromCountry = "IN", onClose }: { code: string; fromCountry?: "CN" | "IN" | "AE"; onClose: () => void }) {
   const [match, setMatch] = useState<MatchRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -382,7 +382,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
     setMatch(null);
 
     api
-      .match(code, "IN")
+      .match(code, fromCountry)
       .then((rows) => {
         if (!active) return;
         const row = rows?.[0] ?? null;
@@ -399,7 +399,7 @@ export function CodePopup({ code, onClose }: { code: string; onClose: () => void
     return () => {
       active = false;
     };
-  }, [code]);
+  }, [code, fromCountry]);
 
   const china = match?.china ?? null;
   const india = match?.india ?? null;

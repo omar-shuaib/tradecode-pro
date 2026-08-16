@@ -55,7 +55,7 @@ export default function DatabasePage({ params }: Props) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("hsCode");
   const [order, setOrder] = useState<"asc" | "desc">("asc");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<{ code: string; country: "CN" | "IN" | "AE" } | null>(null);
 
   const limit = 100;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -308,7 +308,7 @@ export default function DatabasePage({ params }: Props) {
                 >
                 <article
                   className="card p-4 cursor-pointer group"
-                  onClick={() => setSelected(row.hsCode)}
+                   onClick={() => setSelected({ code: row.hsCode, country })}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className="font-mono text-lg font-bold tracking-tight" style={{ color: "var(--text)" }}>
@@ -436,7 +436,7 @@ export default function DatabasePage({ params }: Props) {
         )}
       </main>
 
-      {selected && <CodePopup code={selected} onClose={() => setSelected(null)} />}
+      {selected && <CodePopup code={selected.code} fromCountry={selected.country} onClose={() => setSelected(null)} />}
     </>
   );
 }

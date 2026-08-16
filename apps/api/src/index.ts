@@ -894,48 +894,73 @@ async function findClosestMatch(
   // The first 6 digits are internationally standardised —
   // all countries using HS share the same 6-digit headings.
   // This is the only valid numerical anchor for matching.
+  // However, we also check 4-digit neighbours because sometimes
+  // a semantically better match exists in an adjacent heading
+  // (e.g. 84813099 check valves matches 84818090 other taps,
+  // not 84813000 check valves in a different product family).
   const prefix6 = sourceCode.substring(0, 6);
   const sixCandidates = await fetchMany(
     { [codeField]: { startsWith: prefix6 } },
     50
   );
+  let bestSix: { sim: number; rest: Omit<Candidate, "sim">; confidence: number } | null = null;
   if (sixCandidates.length > 0) {
     const ranked = scoreAndRank(sixCandidates, sourceDesc);
     if (ranked.length > 0 && ranked[0].sim > 0) {
       const best = ranked[0];
       const confidence = calcConfidence(best.sim, "6digit");
       const { sim, ...rest } = best;
-      return {
-        ...rest,
-        confidence,
-        matchMethod: "6digit_description_scored",
-        similarityScore: sim,
-      };
+      bestSix = { sim, rest, confidence };
     }
+  }
+
+  // ── STEP 1b: Also check 4-digit neighbours ──────────────────
+  const prefix4 = sourceCode.substring(0, 4);
+  const fourCandidatesForCompare = await fetchMany(
+    { [codeField]: { startsWith: prefix4 } },
+    200
+  );
+  let bestFour: { sim: number; rest: Omit<Candidate, "sim">; confidence: number } | null = null;
+  if (fourCandidatesForCompare.length > 0) {
+    const ranked = scoreAndRank(fourCandidatesForCompare, sourceDesc);
+    if (ranked.length > 0 && ranked[0].sim > 0) {
+      const best = ranked[0];
+      const confidence = calcConfidence(best.sim, "4digit");
+      const { sim, ...rest } = best;
+      bestFour = { sim, rest, confidence };
+    }
+  }
+
+  // Compare: if 4-digit scores > 0.15 higher on description similarity,
+  // prefer it over the 6-digit match (cross-heading semantic win).
+  if (bestSix && bestFour && bestFour.sim > bestSix.sim + 0.15) {
+    return {
+      ...bestFour.rest,
+      confidence: bestFour.confidence,
+      matchMethod: "4digit_description_scored_cross_heading",
+      similarityScore: bestFour.sim,
+    };
+  }
+  if (bestSix) {
+    return {
+      ...bestSix.rest,
+      confidence: bestSix.confidence,
+      matchMethod: "6digit_description_scored",
+      similarityScore: bestSix.sim,
+    };
   }
 
   // ── STEP 2: 4-digit heading match, scored by description ─────
   // The 4-digit heading is still a meaningful grouping
   // (same product family) but accuracy is lower.
   // MUST use description scoring — never return by position.
-  const prefix4 = sourceCode.substring(0, 4);
-  const fourCandidates = await fetchMany(
-    { [codeField]: { startsWith: prefix4 } },
-    200
-  );
-  if (fourCandidates.length > 0) {
-    const ranked = scoreAndRank(fourCandidates, sourceDesc);
-    if (ranked.length > 0 && ranked[0].sim >= 0.08) {
-      const best = ranked[0];
-      const confidence = calcConfidence(best.sim, "4digit");
-      const { sim, ...rest } = best;
-      return {
-        ...rest,
-        confidence,
-        matchMethod: "4digit_description_scored",
-        similarityScore: sim,
-      };
-    }
+  if (bestFour && bestFour.sim >= 0.08) {
+    return {
+      ...bestFour.rest,
+      confidence: bestFour.confidence,
+      matchMethod: "4digit_description_scored",
+      similarityScore: bestFour.sim,
+    };
   }
 
   // ── STEP 3: Full chapter match, scored by description ────────
@@ -1246,7 +1271,7 @@ app.post("/api/v1/estimate-rate", async (req, res) => {
       ? `What is the current MFN (Most Favoured Nation) import duty rate and VAT rate for China HS code ${hsCode}? Reply with ONLY a JSON object: {"mfn_duty_rate": <number or null>, "vat_rate": <number or null>, "confidence": "high"|"medium"|"low", "note": "<brief reason>"}. Use the current Chinese customs tariff schedule.`
       : `What is the current Basic Customs Duty (BCD) rate and IGST rate for India HS code ${hsCode}? Reply with ONLY a JSON object: {"bcd_rate": <number or null>, "igst_rate": <number or null>, "confidence": "high"|"medium"|"low", "note": "<brief reason>"}. Use the current 2025-26 Indian tariff schedule.`;
 
-    const response = await ai.models.generateContent({ model: "gemini-flash-latest", contents: prompt, config: { responseMimeType: "application/json", temperature: 0.1 } });
+    const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", temperature: 0.1 } });
     const parsed = JSON.parse(response.text ?? "{}");
     const rate = isChina ? (parsed.mfn_duty_rate ?? null) : (parsed.bcd_rate ?? null);
     res.json({ rate, confidence: parsed.confidence ?? "low", note: parsed.note ?? "" });

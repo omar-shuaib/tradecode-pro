@@ -123,7 +123,7 @@ export default function ClassifyPage() {
   const [description, setDescription] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [selectedCode, setSelectedCode] = useState<{ code: string; country: "CN" | "IN" | "AE" } | null>(null);
   const { t, locale } = useTranslation();
 
   const samples = [
@@ -333,7 +333,7 @@ export default function ClassifyPage() {
                             <article
                               key={`${item.country}-${item.hsCode}-${i}`}
                               className={cn("card", isBest && "ring-accent")}
-                              onClick={() => setSelectedCode(item.hsCode)}
+                              onClick={() => setSelectedCode({ code: item.hsCode, country: item.country as "CN" | "IN" | "AE" })}
                               style={{
                                 padding: 16,
                                 cursor: "pointer",
@@ -500,7 +500,7 @@ export default function ClassifyPage() {
         )}
       </section>
 
-      {selectedCode && <CodePopup code={selectedCode} onClose={() => setSelectedCode(null)} />}
+      {selectedCode && <CodePopup code={selectedCode.code} fromCountry={selectedCode.country} onClose={() => setSelectedCode(null)} />}
     </main>
   );
 }
