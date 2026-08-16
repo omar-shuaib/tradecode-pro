@@ -20,22 +20,39 @@ async function loadJson<T>(path: string | URL): Promise<T> {
 const fixtureRoot = new URL("../../../../data/fixtures/", import.meta.url);
 
 async function localIndia() {
-  localIndiaCache ??= await loadJson<any[]>(new URL("local-india-seed.json", fixtureRoot));
+  if (localIndiaCache === null) {
+    localIndiaCache = await loadJson<any[]>(new URL("local-india-seed.json", fixtureRoot)).catch(() => [] as any[]);
+    if (localIndiaCache.length === 0) {
+      localIndiaCache = await db.$queryRaw<any[]>`SELECT hs_code, description_en, description_hi, chapter, section, bcd_rate, igst_rate, sws_rate, import_policy, requires_licence, requires_inspection, inspection_agency, is_restricted, is_prohibited, data_source, last_updated::text FROM hs_codes_india`;
+    }
+  }
   return localIndiaCache;
 }
 
 async function localChina() {
-  localChinaCache ??= await loadJson<any[]>(new URL("local-china-seed.json", fixtureRoot));
+  if (localChinaCache === null) {
+    localChinaCache = await loadJson<any[]>(new URL("local-china-seed.json", fixtureRoot)).catch(() => [] as any[]);
+    if (localChinaCache.length === 0) {
+      localChinaCache = await db.$queryRaw<any[]>`SELECT hs_code_8, hs_code, hs_code_10, chapter, section, description_en, description_zh, mfn_duty_rate, vat_rate, requires_licence, ciq_inspection, is_restricted, is_prohibited, supervisory_conditions, data_source, last_updated::text FROM hs_codes_china`;
+    }
+  }
   return localChinaCache;
 }
 
 async function localUae() {
-  localUaeCache ??= await loadJson<any[]>(new URL("local-uae-seed.json", fixtureRoot));
+  if (localUaeCache === null) {
+    localUaeCache = await loadJson<any[]>(new URL("local-uae-seed.json", fixtureRoot)).catch(() => [] as any[]);
+    if (localUaeCache.length === 0) {
+      localUaeCache = await db.$queryRaw<any[]>`SELECT hs_code, chapter, description_en, description_ar, customs_duty_rate, vat_rate, excise_rate, is_restricted, is_prohibited, data_source, last_updated::text FROM hs_codes_uae`;
+    }
+  }
   return localUaeCache;
 }
 
 async function candidates() {
-  candidateCache ??= await loadJson<any[]>(new URL("unverified-candidates.json", fixtureRoot));
+  if (candidateCache === null) {
+    candidateCache = await loadJson<any[]>(new URL("unverified-candidates.json", fixtureRoot)).catch(() => [] as any[]);
+  }
   return candidateCache;
 }
 
