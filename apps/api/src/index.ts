@@ -12,7 +12,7 @@ import {
   getChapterList,
 } from "@tradecode/shared-types";
 import { db } from "./db.js";
-import { calculate } from "./services/duty.js";
+import { calculate, rates } from "./services/duty.js";
 import { createSearchProvider } from "./services/search/index.js";
 import { classify } from "./services/gemini.js";
 import { detectProductCategories } from "./product-categories.js";
@@ -1185,11 +1185,13 @@ app.post("/api/v1/duty-calculate", async (req, res) => {
       const customDuty = cif * (Number(row.dutyRate ?? 5) / 100);
       const vat = (cif + customDuty) * (Number(row.secondaryRate ?? 5) / 100);
       const total = customDuty + vat;
+      const fx = await rates();
+      const aed = fx.AED ?? { rate: 1, date: "unknown" };
       return res.json({
         country: "AE",
         currency: "AED",
-        exchangeRate: 3.6725,
-        effectiveDate: "local-demo",
+        exchangeRate: aed.rate,
+        effectiveDate: aed.date,
         lines: [
           { label: "CIF", amount: cif },
           { label: "Customs Duty", amount: customDuty },

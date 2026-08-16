@@ -17,7 +17,7 @@ async function loadJson<T>(path: string | URL): Promise<T> {
   return JSON.parse(await readFile(path, "utf8")) as T;
 }
 
-const fixtureRoot = new URL("../../../data/fixtures/", import.meta.url);
+const fixtureRoot = new URL("../../../../data/fixtures/", import.meta.url);
 
 async function localIndia() {
   localIndiaCache ??= await loadJson<any[]>(new URL("local-india-seed.json", fixtureRoot));
@@ -39,7 +39,7 @@ async function candidates() {
   return candidateCache;
 }
 
-async function rates() {
+export async function rates() {
   if (cached && Date.now() - cached.at < 3_600_000) return cached.rates;
   const rows = await db.exchangeRate.findMany();
   const out: Record<string, { rate: number; date: string }> = {};

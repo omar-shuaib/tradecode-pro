@@ -5,6 +5,7 @@ import { Brain, Search, Globe, CheckCircle, AlertTriangle, Trophy, TrendingUp } 
 import { api } from "../../lib/api";
 import { useTranslation } from "../../lib/i18n";
 import { CodePopup } from "../../components/CodePopup";
+import { ExportMenu } from "../../components/ExportMenu";
 import { cn } from "../../lib/utils";
 
 type ClassifiedItem = {
@@ -458,6 +459,12 @@ export default function ClassifyPage() {
                 <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
                   {t("classify.empty.desc")}
                 </p>
+              </div>
+            )}
+
+            {items.length > 0 && (
+              <div style={{ marginTop: 24, display: "flex", justifyContent: "center" }}>
+                <ExportMenu data={result} />
               </div>
             )}
           </div>
