@@ -783,7 +783,8 @@ async function findClosestMatch(
     return Math.min(ceiling, Math.round(sim * (ceiling - bonus)) + bonus);
   }
 
-  // Check cached CN↔IN mappings first
+  // Check cached CN↔IN mappings first, but still compare against
+  // 4-digit cross-heading candidates (same logic as uncached path).
   if (targetCountry === "CN") {
     const existing = await db.bilateralMapping.findFirst({
       where: { indiaHsCode: sourceCode },
@@ -795,17 +796,54 @@ async function findClosestMatch(
         : existing.matchMethod.includes("chapter")
           ? "chapter"
           : "6digit";
-      const sim = descSimilarity(sourceDesc, existing.china.descriptionEn);
-      return {
+      const cachedSim = descSimilarity(sourceDesc, existing.china.descriptionEn);
+      const cachedCandidate = {
         hsCode: existing.china.hsCode8,
         descriptionEn: existing.china.descriptionEn,
         descriptionLocal: existing.china.descriptionZh ?? "",
         chapter: existing.china.chapter,
         dutyRate: existing.china.mfnDutyRate ? Number(existing.china.mfnDutyRate) : null,
         secondaryRate: existing.china.vatRate ? Number(existing.china.vatRate) : null,
-        confidence: calcConfidence(sim, step),
+      };
+
+      // Also check 4-digit cross-heading candidates
+      const prefix4 = sourceCode.substring(0, 4);
+      const fourCandidates = await db.chinaHsCode.findMany({
+        where: { hsCode8: { startsWith: prefix4 } },
+        take: 200,
+      });
+      let bestFourSim = 0;
+      let bestFourCandidate: typeof cachedCandidate | null = null;
+      for (const r of fourCandidates) {
+        const sim = descSimilarity(sourceDesc, r.descriptionEn);
+        if (sim > bestFourSim) {
+          bestFourSim = sim;
+          bestFourCandidate = {
+            hsCode: r.hsCode8,
+            descriptionEn: r.descriptionEn,
+            descriptionLocal: r.descriptionZh ?? "",
+            chapter: r.chapter,
+            dutyRate: r.mfnDutyRate ? Number(r.mfnDutyRate) : null,
+            secondaryRate: r.vatRate ? Number(r.vatRate) : null,
+          };
+        }
+      }
+
+      // If 4-digit scores >0.15 higher, prefer cross-heading match
+      if (bestFourCandidate && bestFourSim > cachedSim + 0.15) {
+        return {
+          ...bestFourCandidate,
+          confidence: calcConfidence(bestFourSim, "4digit"),
+          matchMethod: "4digit_description_scored_cross_heading_cached",
+          similarityScore: bestFourSim,
+        };
+      }
+
+      return {
+        ...cachedCandidate,
+        confidence: calcConfidence(cachedSim, step),
         matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
-        similarityScore: sim,
+        similarityScore: cachedSim,
       };
     }
   }
@@ -820,17 +858,53 @@ async function findClosestMatch(
         : existing.matchMethod.includes("chapter")
           ? "chapter"
           : "6digit";
-      const sim = descSimilarity(sourceDesc, existing.india.descriptionEn);
-      return {
+      const cachedSim = descSimilarity(sourceDesc, existing.india.descriptionEn);
+      const cachedCandidate = {
         hsCode: existing.india.hsCode,
         descriptionEn: existing.india.descriptionEn,
         descriptionLocal: existing.india.descriptionHi ?? "",
         chapter: existing.india.chapter,
         dutyRate: existing.india.bcdRate ? Number(existing.india.bcdRate) : null,
         secondaryRate: existing.india.igstRate ? Number(existing.india.igstRate) : null,
-        confidence: calcConfidence(sim, step),
+      };
+
+      // Also check 4-digit cross-heading candidates
+      const prefix4 = sourceCode.substring(0, 4);
+      const fourCandidates = await db.indiaHsCode.findMany({
+        where: { hsCode: { startsWith: prefix4 } },
+        take: 200,
+      });
+      let bestFourSim = 0;
+      let bestFourCandidate: typeof cachedCandidate | null = null;
+      for (const r of fourCandidates) {
+        const sim = descSimilarity(sourceDesc, r.descriptionEn);
+        if (sim > bestFourSim) {
+          bestFourSim = sim;
+          bestFourCandidate = {
+            hsCode: r.hsCode,
+            descriptionEn: r.descriptionEn,
+            descriptionLocal: r.descriptionHi ?? "",
+            chapter: r.chapter,
+            dutyRate: r.bcdRate ? Number(r.bcdRate) : null,
+            secondaryRate: r.igstRate ? Number(r.igstRate) : null,
+          };
+        }
+      }
+
+      if (bestFourCandidate && bestFourSim > cachedSim + 0.15) {
+        return {
+          ...bestFourCandidate,
+          confidence: calcConfidence(bestFourSim, "4digit"),
+          matchMethod: "4digit_description_scored_cross_heading_cached",
+          similarityScore: bestFourSim,
+        };
+      }
+
+      return {
+        ...cachedCandidate,
+        confidence: calcConfidence(cachedSim, step),
         matchMethod: existing.matchMethod.replace(/(?:_cached)+$/, "") + "_cached",
-        similarityScore: sim,
+        similarityScore: cachedSim,
       };
     }
   }
