@@ -20,5 +20,6 @@ export const api={
     if(opts.order)p.set("order",opts.order);
     return request<BrowseResponse>(`/api/v1/browse/${country}?${p}`);
   },
+  estimateRate:(body:{country:"CN"|"IN";hsCode:string})=>request<{rate:number|null;confidence:string;note:string}>("/api/v1/estimate-rate",{method:"POST",body:JSON.stringify(body)}),
   logError:(body:unknown)=>fetch(base+"/api/v1/log-error",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
 };

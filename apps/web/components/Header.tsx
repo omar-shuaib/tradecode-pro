@@ -45,6 +45,15 @@ export function Header() {
         <span style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)" }}>Pro</span>
       </Link>
 
+      <Link
+        href="/"
+        className="btn-primary"
+        onClick={() => { sessionStorage.removeItem("traderoute"); sessionStorage.removeItem("tradedocs"); }}
+        style={{ padding: "8px 16px", fontSize: 13, borderRadius: "var(--radius-sm)", textDecoration: "none" }}
+      >
+        {t("nav.newShipment")}
+      </Link>
+
       <nav
         style={{ display: "flex", alignItems: "center", gap: 4 }}
         className="desktop-nav"

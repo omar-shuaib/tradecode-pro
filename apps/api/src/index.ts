@@ -1233,6 +1233,29 @@ app.post("/api/v1/classify", async (req, res) => {
   }
 });
 
+app.post("/api/v1/estimate-rate", async (req, res) => {
+  try {
+    const { country, hsCode } = req.body as { country: string; hsCode: string };
+    if (!process.env.GEMINI_API_KEY) return res.json({ rate: null, confidence: "low", note: "No Gemini API key" });
+
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    const isChina = country === "CN";
+    const prompt = isChina
+      ? `What is the current MFN (Most Favoured Nation) import duty rate and VAT rate for China HS code ${hsCode}? Reply with ONLY a JSON object: {"mfn_duty_rate": <number or null>, "vat_rate": <number or null>, "confidence": "high"|"medium"|"low", "note": "<brief reason>"}. Use the current Chinese customs tariff schedule.`
+      : `What is the current Basic Customs Duty (BCD) rate and IGST rate for India HS code ${hsCode}? Reply with ONLY a JSON object: {"bcd_rate": <number or null>, "igst_rate": <number or null>, "confidence": "high"|"medium"|"low", "note": "<brief reason>"}. Use the current 2025-26 Indian tariff schedule.`;
+
+    const response = await ai.models.generateContent({ model: "gemini-flash-latest", contents: prompt, config: { responseMimeType: "application/json", temperature: 0.1 } });
+    const parsed = JSON.parse(response.text ?? "{}");
+    const rate = isChina ? (parsed.mfn_duty_rate ?? null) : (parsed.bcd_rate ?? null);
+    res.json({ rate, confidence: parsed.confidence ?? "low", note: parsed.note ?? "" });
+  } catch (err: any) {
+    console.error("estimate-rate error:", err?.message ?? err);
+    res.json({ rate: null, confidence: "low", note: "Estimation failed" });
+  }
+});
+
 app.post("/api/v1/log-error", async (req, res) => {
   const payload = ErrorLogSchema.parse(req.body);
   await db.errorLog.create({ data: payload });

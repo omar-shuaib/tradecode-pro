@@ -23,6 +23,7 @@ type CountrySide = {
   requiresLicence?: boolean | null;
   isRestricted?: boolean | null;
   isProhibited?: boolean | null;
+  dataSource?: string | null;
 };
 
 type MatchRow = {
@@ -295,7 +296,7 @@ function Panel({ side, t }: { side: CountrySide; t: (key: any, params?: Record<s
                     : "var(--text)",
               }}
             >
-              {side.dutyRate == null ? "n/a" : `${side.dutyRate}%`}
+              {side.dutyRate == null ? "n/a" : `${side.dutyRate}%`}{side.dataSource?.includes("gemini-estimate") && <span title={t("rate.est.tooltip")} style={{ fontSize: 10, color: "var(--warning)", marginLeft: 4, cursor: "help" }}>{t("rate.est")}</span>}
             </span>
           </div>
           <RateBar value={side.dutyRate} />

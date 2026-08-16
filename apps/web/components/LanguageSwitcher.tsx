@@ -6,6 +6,7 @@ import { Globe } from "lucide-react";
 const options: { value: Locale; label: string }[] = [
   { value: "en", label: "EN" },
   { value: "zh", label: "中文" },
+  { value: "hi", label: "HI" },
 ];
 
 export function LanguageSwitcher() {

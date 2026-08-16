@@ -20,6 +20,7 @@ type MatchSide = {
   isProhibited?: boolean | null;
   requiresLicence?: boolean | null;
   requiresInspection?: boolean | null;
+  dataSource?: string | null;
 } | null;
 
 type ClosestMatch = {
@@ -112,6 +113,7 @@ function SideCard({
   secondary,
   extra,
   flags,
+  dataSource,
 }: {
   title: string;
   country: string;
@@ -123,7 +125,9 @@ function SideCard({
   secondary?: number | null;
   extra?: string;
   flags: { icon: typeof CheckCircle; label: string; tone: "good" | "warn" }[];
+  dataSource?: string | null;
 }) {
+  const { t } = useTranslation();
   const dutyHigh = title === "CN" ? 12 : title === "IN" ? 15 : 10;
   const secondaryHigh = title === "CN" ? 13 : title === "IN" ? 10 : 10;
 
@@ -167,7 +171,7 @@ function SideCard({
                 color: duty != null && duty >= dutyHigh ? "var(--error)" : "var(--text)",
               }}
             >
-              {duty == null ? "n/a" : `${duty}%`}
+              {duty == null ? "n/a" : `${duty}%`}{dataSource?.includes("gemini-estimate") && <span title={t("rate.est.tooltip")} style={{ fontSize: 10, color: "var(--warning)", marginLeft: 4, cursor: "help" }}>{t("rate.est")}</span>}
             </span>
           </div>
           <RateBar value={duty} />
@@ -546,6 +550,7 @@ export function ComparisonView() {
                   rateLabel={t("compare.mfn")}
                   duty={china.dutyRate ?? null}
                   secondary={china.secondaryRate ?? null}
+                  dataSource={china.dataSource}
                   extra={
                     china.supervisoryConditions
                       ? t("compare.supervisory.yes", { v: china.supervisoryConditions })
@@ -583,6 +588,7 @@ export function ComparisonView() {
                   rateLabel={t("compare.bcd")}
                   duty={india.dutyRate ?? null}
                   secondary={india.secondaryRate ?? null}
+                  dataSource={india.dataSource}
                   extra={
                     india.importPolicy
                       ? t("compare.policy.yes", { v: india.importPolicy })
@@ -620,6 +626,7 @@ export function ComparisonView() {
                   rateLabel={t("popup.customs.duty")}
                   duty={uae.dutyRate ?? null}
                   secondary={uae.secondaryRate ?? null}
+                  dataSource={uae.dataSource}
                   flags={aeFlags.length ? aeFlags : [{ icon: CheckCircle, label: t("compare.no.flags"), tone: "good" }]}
                 />
                 <DutyDisclaimer />
