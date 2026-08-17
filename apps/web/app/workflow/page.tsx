@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ArrowLeft, ArrowRight, Loader2, Package, FileText, Truck } from "lucide-react";
+import { Check, ArrowLeft, ArrowRight, Loader2, Package, FileText, Truck, Ship, Plane, ArrowUpDown } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { useTranslation } from "../../lib/i18n";
 import { api } from "../../lib/api";
@@ -89,12 +89,29 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
     try {
       const data = await api.code(country, code);
       const match = await api.match(code, country);
-      const origin = isOrigin ? data : match[0] ?? null;
-      const dest = isOrigin ? match[0] ?? null : data;
-      onComplete({
-        originCode: origin?.hsCode ?? code, originCodeData: origin,
-        destinationCode: dest?.hsCode ?? "", destinationCodeData: dest,
-      });
+      const row = match[0] ?? null;
+
+      if (isOrigin) {
+        const destKey = destCountry.toLowerCase() as "china" | "india" | "uae";
+        const closestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
+        const destExact = row?.[destKey] ?? null;
+        const destClosest = row?.[closestKey] ?? null;
+        const destData = destExact || destClosest || null;
+        onComplete({
+          originCode: data?.hsCode ?? code, originCodeData: data,
+          destinationCode: destData?.hsCode ?? "", destinationCodeData: destData,
+        });
+      } else {
+        const originKey = originCountry.toLowerCase() as "china" | "india" | "uae";
+        const closestKey = (`closest${originKey.charAt(0).toUpperCase() + originKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
+        const originExact = row?.[originKey] ?? null;
+        const originClosest = row?.[closestKey] ?? null;
+        const originData = originExact || originClosest || null;
+        onComplete({
+          originCode: originData?.hsCode ?? "", originCodeData: originData,
+          destinationCode: data?.hsCode ?? code, destinationCodeData: data,
+        });
+      }
     } catch { setError(t("step2.error.codeNotFound", { country })); setLoading(false); }
   }
 
@@ -111,9 +128,15 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
     setLoading(true); setError("");
     try {
       const match = await api.match(item.hsCode, originCountry);
+      const row = match[0] ?? null;
+      const destKey = destCountry.toLowerCase() as "china" | "india" | "uae";
+      const closestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
+      const destExact = row?.[destKey] ?? null;
+      const destClosest = row?.[closestKey] ?? null;
+      const destData = destExact || destClosest || null;
       onComplete({
         originCode: item.hsCode, originCodeData: { ...item, country: originCountry },
-        destinationCode: match[0]?.hsCode ?? "", destinationCodeData: match[0] ?? null,
+        destinationCode: destData?.hsCode ?? "", destinationCodeData: destData ?? null,
       });
     } catch { setError("Match failed."); setLoading(false); }
   }
@@ -218,11 +241,17 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
 
   function renderColumn(data: CodeResult | null, label: string, which: "origin" | "dest", duty: any) {
     const isEst = data?.dataSource?.includes("gemini-estimate");
+    const isClosest = (data as any)?.confidenceLabel != null;
     return (
-      <div className="card" style={{ flex: 1, padding: 20, minWidth: 260 }}>
+      <div className="card" style={{ flex: 1, padding: 20, minWidth: 260, borderStyle: isClosest ? "dashed" : undefined, borderColor: isClosest ? "var(--warning)" : undefined }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>{label}</div>
         {data ? (
           <>
+            {isClosest && (
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--warning)", marginBottom: 6, padding: "4px 8px", background: "var(--warning-light)", borderRadius: "var(--radius-sm)", display: "inline-block" }}>
+                {(data as any).confidenceLabel}
+              </div>
+            )}
             <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{data.hsCode}</div>
             <p style={{ margin: "6px 0", fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{data.descriptionEn}</p>
             {data.descriptionLocal && <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>{data.descriptionLocal}</p>}
@@ -304,6 +333,14 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
   const totalGross = useMemo(() => form.packages * form.grossWeightKg, [form]);
 
   useEffect(() => { sessionStorage.setItem("tradedocs", JSON.stringify(form)); }, [form]);
+
+  const invoiceValid = form.sellerName.trim() !== "" && form.sellerAddress.trim() !== "" &&
+    form.buyerName.trim() !== "" && form.buyerAddress.trim() !== "" &&
+    form.quantity > 0 && form.unitPrice > 0;
+  const packingValid = invoiceValid && form.packages > 0 &&
+    form.lengthCm > 0 && form.widthCm > 0 && form.heightCm > 0 && form.grossWeightKg > 0;
+  const allValid = packingValid;
+  const anyEmpty = !invoiceValid;
 
   function generateInvoice() {
     const doc = new jsPDF();
@@ -411,6 +448,7 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.quantity")}</label>
             <input className="input" type="number" min={1} value={form.quantity} onChange={e => set("quantity", Number(e.target.value) || 1)}
               style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>{t("step4.quantity.helper")}</span>
           </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.unit")}</label>
@@ -428,6 +466,7 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.packages")}</label>
             <input className="input" type="number" min={1} value={form.packages} onChange={e => set("packages", Number(e.target.value) || 1)}
               style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>{t("step4.packages.helper")}</span>
           </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.length")} (cm)</label>
@@ -461,18 +500,27 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
         </div>
       </div>
 
+      {/* Validation message */}
+      {anyEmpty && (
+        <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: "var(--radius-sm)", background: "var(--warning-light)", color: "var(--warning)", fontSize: 13 }}>
+          {t("step4.validationMessage")}
+        </div>
+      )}
+
       {/* PDF buttons */}
       <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-        <button onClick={generateInvoice} className="btn-primary" style={{ padding: "10px 20px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={generateInvoice} disabled={!invoiceValid} className="btn-primary" title={!invoiceValid ? t("step4.tooltipInvoice") : ""}
+          style={{ padding: "10px 20px", fontSize: 13, display: "flex", alignItems: "center", gap: 6, opacity: invoiceValid ? 1 : 0.5, cursor: invoiceValid ? "pointer" : "not-allowed" }}>
           <FileText style={{ width: 16, height: 16 }} /> {t("step4.downloadInvoice")}
         </button>
-        <button onClick={generatePackingList} className="btn-primary" style={{ padding: "10px 20px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={generatePackingList} disabled={!packingValid} className="btn-primary" title={!packingValid ? t("step4.tooltipPacking") : ""}
+          style={{ padding: "10px 20px", fontSize: 13, display: "flex", alignItems: "center", gap: 6, opacity: packingValid ? 1 : 0.5, cursor: packingValid ? "pointer" : "not-allowed" }}>
           <Package style={{ width: 16, height: 16 }} /> {t("step4.downloadPacking")}
         </button>
       </div>
 
-      <button className="btn-primary" onClick={() => onComplete(form)}
-        style={{ marginTop: 20, padding: "12px 28px", fontSize: 14 }}>
+      <button className="btn-primary" onClick={() => onComplete(form)} disabled={!allValid}
+        style={{ marginTop: 20, padding: "12px 28px", fontSize: 14, opacity: allValid ? 1 : 0.5, cursor: allValid ? "pointer" : "not-allowed" }}>
         {t("step4.continue")} <ArrowRight style={{ width: 16, height: 16, marginLeft: 6, verticalAlign: "middle" }} />
       </button>
     </div>
@@ -565,7 +613,7 @@ function Step5Freight({ route, codes, docs }: { route: TradeRoute; codes: any; d
       </a>
 
       {/* Start over */}
-      <button onClick={() => { sessionStorage.removeItem("traderoute"); sessionStorage.removeItem("tradedocs"); window.location.href = "/"; }}
+      <button onClick={() => { sessionStorage.removeItem("traderoute"); sessionStorage.removeItem("tradedocs"); window.location.href = "/workflow"; }}
         style={{
           display: "block", width: "100%", marginTop: 12, padding: "12px 0", fontSize: 14,
           border: "1.5px solid var(--border)", borderRadius: "var(--radius)", background: "var(--bg-input)",
@@ -578,42 +626,294 @@ function Step5Freight({ route, codes, docs }: { route: TradeRoute; codes: any; d
 }
 
 /* ═══════════════════════════════════════════
+   STEP 1 — Route Selection
+   ═══════════════════════════════════════════ */
+type Port = { code: string; name: string; city: string; country: "CN" | "IN" | "AE"; mode: "sea" | "air" | "both" };
+
+const ALL_PORTS: Port[] = [
+  { code: "CNSHA", name: "Shanghai", city: "Shanghai", country: "CN", mode: "sea" },
+  { code: "CNYTN", name: "Yantian (Shenzhen)", city: "Shenzhen", country: "CN", mode: "sea" },
+  { code: "CNGZH", name: "Nansha (Guangzhou)", city: "Guangzhou", country: "CN", mode: "sea" },
+  { code: "CNNBO", name: "Ningbo", city: "Ningbo", country: "CN", mode: "sea" },
+  { code: "CNTXG", name: "Tianjin", city: "Tianjin", country: "CN", mode: "sea" },
+  { code: "CNTAO", name: "Qingdao", city: "Qingdao", country: "CN", mode: "sea" },
+  { code: "CNXMN", name: "Xiamen", city: "Xiamen", country: "CN", mode: "sea" },
+  { code: "CNDLC", name: "Dalian", city: "Dalian", country: "CN", mode: "sea" },
+  { code: "INNSA", name: "JNPT (Mumbai)", city: "Mumbai", country: "IN", mode: "sea" },
+  { code: "INMUN", name: "Mundra", city: "Mundra", country: "IN", mode: "sea" },
+  { code: "INMAA", name: "Chennai", city: "Chennai", country: "IN", mode: "sea" },
+  { code: "INCCU", name: "Kolkata", city: "Kolkata", country: "IN", mode: "sea" },
+  { code: "INCOK", name: "Cochin", city: "Cochin", country: "IN", mode: "sea" },
+  { code: "INHAZ", name: "Hazira", city: "Hazira", country: "IN", mode: "sea" },
+  { code: "INPAV", name: "Pipavav", city: "Pipavav", country: "IN", mode: "sea" },
+  { code: "INTUT", name: "Tuticorin", city: "Tuticorin", country: "IN", mode: "sea" },
+  { code: "AEJEA", name: "Jebel Ali (Dubai)", city: "Dubai", country: "AE", mode: "sea" },
+  { code: "AEAUH", name: "Khalifa Port (Abu Dhabi)", city: "Abu Dhabi", country: "AE", mode: "sea" },
+  { code: "AESHJ", name: "Sharjah", city: "Sharjah", country: "AE", mode: "sea" },
+  { code: "PVG", name: "Shanghai Pudong", city: "Shanghai", country: "CN", mode: "air" },
+  { code: "PEK", name: "Beijing Capital", city: "Beijing", country: "CN", mode: "air" },
+  { code: "CAN", name: "Guangzhou Baiyun", city: "Guangzhou", country: "CN", mode: "air" },
+  { code: "SZX", name: "Shenzhen Bao'an", city: "Shenzhen", country: "CN", mode: "air" },
+  { code: "BOM", name: "Mumbai", city: "Mumbai", country: "IN", mode: "air" },
+  { code: "DEL", name: "Delhi", city: "Delhi", country: "IN", mode: "air" },
+  { code: "MAA", name: "Chennai", city: "Chennai", country: "IN", mode: "air" },
+  { code: "BLR", name: "Bangalore", city: "Bangalore", country: "IN", mode: "air" },
+  { code: "HYD", name: "Hyderabad", city: "Hyderabad", country: "IN", mode: "air" },
+  { code: "DXB", name: "Dubai", city: "Dubai", country: "AE", mode: "air" },
+  { code: "AUH", name: "Abu Dhabi", city: "Abu Dhabi", country: "AE", mode: "air" },
+  { code: "SHJ", name: "Sharjah", city: "Sharjah", country: "AE", mode: "air" },
+];
+
+const PORT_FLAGS: Record<string, string> = { CN: "\uD83C\uDDE8\uD83C\uDDF3", IN: "\uD83C\uDDEE\uD83C\uDDF3", AE: "\uD83C\uDDE6\uD83C\uDDEA" };
+const PORT_GROUP_LABELS: Record<string, Record<string, string>> = {
+  en: { CN: "China", IN: "India", AE: "UAE" },
+  zh: { CN: "\u4E2D\u56FD", IN: "\u5370\u5EA6", AE: "\u963F\u8054\u914B" },
+  hi: { CN: "China", IN: "India", AE: "UAE" },
+};
+
+function PortDropdown({ label, selected, excludedCountry, mode, onSelect, placeholder }: {
+  label: string;
+  selected: Port | null;
+  excludedCountry?: string;
+  mode: "sea" | "air";
+  onSelect: (p: Port) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const { locale, t } = useTranslation();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filtered = ALL_PORTS.filter(p => {
+    if (p.mode !== mode && p.mode !== "both") return false;
+    if (excludedCountry && p.country === excludedCountry) return false;
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return p.name.toLowerCase().includes(q) || p.city.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+  });
+
+  const groups = new Map<string, Port[]>();
+  for (const p of filtered) { const g = groups.get(p.country) ?? []; g.push(p); groups.set(p.country, g); }
+
+  return (
+    <div ref={ref} style={{ flex: 1, position: "relative" }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase" }}>{label}</div>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%", padding: "14px 16px", textAlign: "left", fontSize: 15, fontWeight: 600,
+          borderRadius: "var(--radius)", border: "1.5px solid var(--border)", background: "var(--bg-input)",
+          color: selected ? "var(--text)" : "var(--text-muted)", cursor: "pointer", transition: "border-color 0.15s",
+          display: "flex", flexDirection: "column", gap: 2,
+        }}
+      >
+        {selected ? (
+          <>
+            <span style={{ fontSize: 15, fontWeight: 600 }}>{selected.name}</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>{selected.code} — {selected.city}</span>
+          </>
+        ) : (
+          <span>{placeholder}</span>
+        )}
+      </button>
+      {open && (
+        <div
+          className="glass-elevated"
+          style={{
+            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 60, marginTop: 4,
+            borderRadius: "var(--radius)", border: "1px solid var(--border)", padding: 8,
+            maxHeight: 320, overflowY: "auto",
+          }}
+        >
+          <input
+            className="input"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder={t("route.search.placeholder")}
+            autoFocus
+            style={{ width: "100%", padding: "8px 12px", fontSize: 13, boxSizing: "border-box", marginBottom: 6 }}
+          />
+          {filtered.length === 0 && <div style={{ padding: "12px 8px", fontSize: 13, color: "var(--text-muted)", textAlign: "center" }}>{t("route.no.results")}</div>}
+          {Array.from(groups.entries()).map(([country, ports]) => (
+            <div key={country}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "6px 8px 4px", letterSpacing: "0.04em" }}>
+                {PORT_FLAGS[country] ?? ""} {PORT_GROUP_LABELS[locale]?.[country] ?? PORT_GROUP_LABELS.en[country] ?? country}
+              </div>
+              {ports.map(p => (
+                <button
+                  key={p.code}
+                  onClick={() => { onSelect(p); setOpen(false); setQuery(""); }}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left", padding: "8px 8px",
+                    fontSize: 13, borderRadius: "var(--radius-sm)", border: "none", background: "transparent",
+                    cursor: "pointer", color: "var(--text)",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-elevated)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ fontWeight: 600 }}>{p.name}</span>
+                  <span style={{ color: "var(--text-muted)", marginLeft: 6, fontFamily: "monospace", fontSize: 12 }}>{p.code}</span>
+                  <span style={{ color: "var(--text-faint)", marginLeft: 4, fontSize: 12 }}>{p.city}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Step1Route({ onComplete }: { onComplete: (r: TradeRoute) => void }) {
+  const [fromPort, setFromPort] = useState<Port | null>(null);
+  const [toPort, setToPort] = useState<Port | null>(null);
+  const [mode, setMode] = useState<"sea" | "air">("sea");
+  const { t } = useTranslation();
+
+  function swapPorts() { setFromPort(toPort); setToPort(fromPort); }
+
+  function handleStart() {
+    if (!fromPort || !toPort) return;
+    const r: TradeRoute = {
+      fromPort: { code: fromPort.code, name: fromPort.name, city: fromPort.city, country: fromPort.country },
+      toPort: { code: toPort.code, name: toPort.name, city: toPort.city, country: toPort.country },
+      mode,
+      startedAt: new Date().toISOString(),
+    };
+    sessionStorage.setItem("traderoute", JSON.stringify(r));
+    onComplete(r);
+  }
+
+  return (
+    <div style={{ maxWidth: 640, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 4, textAlign: "center" }}>
+        {t("route.title")}
+      </h2>
+      <p style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center", marginBottom: 24 }}>
+        {t("route.subtitle")}
+      </p>
+
+      <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+          <PortDropdown
+            label={t("route.from")}
+            selected={fromPort}
+            excludedCountry={toPort?.country}
+            mode={mode}
+            onSelect={setFromPort}
+            placeholder={t("route.select.origin")}
+          />
+          <button
+            onClick={swapPorts}
+            title={t("route.swap")}
+            style={{
+              width: 40, height: 40, borderRadius: "50%", border: "1.5px solid var(--border)",
+              background: "var(--bg-input)", display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", flexShrink: 0, marginBottom: 2, color: "var(--accent)",
+            }}
+          >
+            <ArrowUpDown style={{ width: 16, height: 16 }} />
+          </button>
+          <PortDropdown
+            label={t("route.to")}
+            selected={toPort}
+            excludedCountry={fromPort?.country}
+            mode={mode}
+            onSelect={setToPort}
+            placeholder={t("route.select.destination")}
+          />
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          {[
+            { value: "sea" as const, icon: Ship, key: "route.sea" as const },
+            { value: "air" as const, icon: Plane, key: "route.air" as const },
+          ].map(({ value, icon: Icon, key }) => (
+            <button
+              key={value}
+              onClick={() => { setMode(value); setFromPort(null); setToPort(null); }}
+              style={{
+                flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, borderRadius: "var(--radius-sm)",
+                border: `1.5px solid ${mode === value ? "var(--accent)" : "var(--border)"}`,
+                background: mode === value ? "var(--accent-light)" : "var(--bg-input)",
+                color: mode === value ? "var(--accent)" : "var(--text-secondary)",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                transition: "all 0.15s",
+              }}
+            >
+              <Icon style={{ width: 15, height: 15 }} /> {t(key)}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={handleStart}
+          disabled={!fromPort || !toPort}
+          className="btn-primary"
+          style={{
+            width: "100%", padding: "14px 0", fontSize: 15, fontWeight: 700, borderRadius: "var(--radius)",
+            opacity: !fromPort || !toPort ? 0.5 : 1, cursor: !fromPort || !toPort ? "not-allowed" : "pointer",
+          }}
+        >
+          {t("route.start")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    MAIN PAGE
    ═══════════════════════════════════════════ */
 export default function WorkflowPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [route, setRoute] = useState<TradeRoute | null>(null);
-  const [step, setStep] = useState(2);
+  const [step, setStep] = useState(1);
   const [codes, setCodes] = useState<any>({});
   const [docs, setDocs] = useState<DocForm | null>(null);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("traderoute");
-    if (!raw) { router.replace("/"); return; }
-    setRoute(JSON.parse(raw));
-  }, [router]);
+    if (raw) {
+      setRoute(JSON.parse(raw));
+      setStep(2);
+    }
+  }, []);
 
-  if (!route) return null;
+  function handleRouteStart(r: TradeRoute) {
+    setRoute(r);
+    setStep(2);
+  }
 
   return (
     <main className="page-shell" style={{ paddingBottom: 80, paddingTop: 24 }}>
       <StepIndicator current={step} t={t} />
 
       {/* Back button */}
-      {step > 2 && (
+      {step > 1 && (
         <div style={{ maxWidth: 800, margin: "0 auto 12px" }}>
-          <button onClick={() => setStep(s => s - 1)}
+          <button onClick={() => {
+            if (step === 2) { setRoute(null); setStep(1); sessionStorage.removeItem("traderoute"); }
+            else setStep(s => s - 1);
+          }}
             style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
             <ArrowLeft style={{ width: 14, height: 14 }} /> {t("workflow.back")}
           </button>
         </div>
       )}
 
-      {step === 2 && <Step2Code route={route} onComplete={(c) => { setCodes(c); setStep(3); }} />}
-      {step === 3 && <Step3Compare route={route} codes={codes} onComplete={(c) => { setCodes({ ...codes, ...c }); setStep(4); }} />}
-      {step === 4 && <Step4Documents route={route} codes={codes} onComplete={(d) => { setDocs(d); setStep(5); }} />}
-      {step === 5 && <Step5Freight route={route} codes={codes} docs={docs!} />}
+      {step === 1 && <Step1Route onComplete={handleRouteStart} />}
+      {step === 2 && route && <Step2Code route={route} onComplete={(c) => { setCodes(c); setStep(3); }} />}
+      {step === 3 && route && <Step3Compare route={route} codes={codes} onComplete={(c) => { setCodes({ ...codes, ...c }); setStep(4); }} />}
+      {step === 4 && route && <Step4Documents route={route} codes={codes} onComplete={(d) => { setDocs(d); setStep(5); }} />}
+      {step === 5 && route && <Step5Freight route={route} codes={codes} docs={docs!} />}
     </main>
   );
 }

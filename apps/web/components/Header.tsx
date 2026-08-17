@@ -46,7 +46,7 @@ export function Header() {
       </Link>
 
       <Link
-        href="/"
+        href="/workflow"
         className="btn-primary"
         onClick={() => { sessionStorage.removeItem("traderoute"); sessionStorage.removeItem("tradedocs"); }}
         style={{ padding: "8px 16px", fontSize: 13, borderRadius: "var(--radius-sm)", textDecoration: "none" }}
