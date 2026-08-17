@@ -49,7 +49,9 @@ Each object MUST have: country (one of "CN", "IN", "AE"), hsCode (8-digit string
 
     await db.aiClassification.create({ data: { productDescription: description, country, results } });
     return results;
-  } catch {
+  } catch (err: any) {
+    console.error("[gemini] classify error:", err?.message ?? err);
+    if (err?.stack) console.error("[gemini] stack:", err.stack);
     return null;
   }
 }

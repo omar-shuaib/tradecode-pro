@@ -87,31 +87,28 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
   async function lookupCode(code: string, country: "CN" | "IN" | "AE", isOrigin: boolean) {
     setLoading(true); setError("");
     try {
-      const data = await api.code(country, code);
       const match = await api.match(code, country);
       const row = match[0] ?? null;
 
-      if (isOrigin) {
-        const destKey = destCountry.toLowerCase() as "china" | "india" | "uae";
-        const closestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
-        const destExact = row?.[destKey] ?? null;
-        const destClosest = row?.[closestKey] ?? null;
-        const destData = destExact || destClosest || null;
-        onComplete({
-          originCode: data?.hsCode ?? code, originCodeData: data,
-          destinationCode: destData?.hsCode ?? "", destinationCodeData: destData,
-        });
-      } else {
-        const originKey = originCountry.toLowerCase() as "china" | "india" | "uae";
-        const closestKey = (`closest${originKey.charAt(0).toUpperCase() + originKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
-        const originExact = row?.[originKey] ?? null;
-        const originClosest = row?.[closestKey] ?? null;
-        const originData = originExact || originClosest || null;
-        onComplete({
-          originCode: originData?.hsCode ?? "", originCodeData: originData,
-          destinationCode: data?.hsCode ?? code, destinationCodeData: data,
-        });
+      const originKey = originCountry.toLowerCase() as "china" | "india" | "uae";
+      const closestOriginKey = (`closest${originKey.charAt(0).toUpperCase() + originKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
+      const destKey = destCountry.toLowerCase() as "china" | "india" | "uae";
+      const closestDestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
+
+      let originData = row?.[originKey] ?? row?.[closestOriginKey] ?? null;
+      let destData = row?.[destKey] ?? row?.[closestDestKey] ?? null;
+
+      if (!originData) {
+        try { originData = await api.code(originCountry as "CN"|"IN"|"AE", code); } catch {}
       }
+      if (!destData) {
+        try { destData = await api.code(destCountry as "CN"|"IN"|"AE", code); } catch {}
+      }
+
+      onComplete({
+        originCode: originData?.hsCode ?? code, originCodeData: originData,
+        destinationCode: destData?.hsCode ?? "", destinationCodeData: destData,
+      });
     } catch { setError(t("step2.error.codeNotFound", { country })); setLoading(false); }
   }
 
@@ -129,14 +126,22 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
     try {
       const match = await api.match(item.hsCode, originCountry);
       const row = match[0] ?? null;
+
+      const originKey = originCountry.toLowerCase() as "china" | "india" | "uae";
+      const closestOriginKey = (`closest${originKey.charAt(0).toUpperCase() + originKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
       const destKey = destCountry.toLowerCase() as "china" | "india" | "uae";
-      const closestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
-      const destExact = row?.[destKey] ?? null;
-      const destClosest = row?.[closestKey] ?? null;
-      const destData = destExact || destClosest || null;
+      const closestDestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
+
+      let originData = row?.[originKey] ?? row?.[closestOriginKey] ?? { ...item, country: originCountry };
+      let destData = row?.[destKey] ?? row?.[closestDestKey] ?? null;
+
+      if (!destData) {
+        try { destData = await api.code(destCountry as "CN"|"IN"|"AE", item.hsCode); } catch {}
+      }
+
       onComplete({
-        originCode: item.hsCode, originCodeData: { ...item, country: originCountry },
-        destinationCode: destData?.hsCode ?? "", destinationCodeData: destData ?? null,
+        originCode: originData.hsCode ?? item.hsCode, originCodeData: originData,
+        destinationCode: destData?.hsCode ?? "", destinationCodeData: destData,
       });
     } catch { setError("Match failed."); setLoading(false); }
   }
@@ -218,6 +223,7 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
   const [originDuty, setOriginDuty] = useState<any>(null);
   const [destDuty, setDestDuty] = useState<any>(null);
   const [estimating, setEstimating] = useState<string | null>(null);
+  const [estimateError, setEstimateError] = useState<{ which: string; msg: string } | null>(null);
 
   useEffect(() => {
     if (originData?.hsCode && originData?.dutyRate == null) return;
@@ -226,7 +232,7 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
   }, [originData?.hsCode, destData?.hsCode, cif]);
 
   async function estimateRate(country: "CN" | "IN", hsCode: string, which: "origin" | "dest") {
-    setEstimating(which);
+    setEstimating(which); setEstimateError(null);
     try {
       const res = await api.estimateRate({ country, hsCode });
       if (res.rate != null) {
@@ -234,8 +240,10 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
           ? { ...originData!, dutyRate: res.rate }
           : { ...destData!, dutyRate: res.rate };
         if (which === "origin") setOriginData(updated); else setDestData(updated);
+      } else {
+        setEstimateError({ which, msg: res.note || "Estimation failed" });
       }
-    } catch {}
+    } catch { setEstimateError({ which, msg: "Network error" }); }
     setEstimating(null);
   }
 
@@ -273,6 +281,9 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
                   style={{ display: "block", marginTop: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, borderRadius: "var(--radius-sm)", border: "1px solid var(--accent)", background: "transparent", color: "var(--accent)", cursor: "pointer" }}>
                   {estimating === which ? t("step3.estimating") : t("step3.estimateAi")}
                 </button>
+                {estimateError && estimateError.which === which && estimating !== which && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--error)" }}>{estimateError.msg}</div>
+                )}
               </div>
             )}
 

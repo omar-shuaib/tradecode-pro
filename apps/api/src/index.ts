@@ -1351,7 +1351,25 @@ app.post("/api/v1/estimate-rate", async (req, res) => {
     res.json({ rate, confidence: parsed.confidence ?? "low", note: parsed.note ?? "" });
   } catch (err: any) {
     console.error("estimate-rate error:", err?.message ?? err);
-    res.json({ rate: null, confidence: "low", note: "Estimation failed" });
+    if (err?.stack) console.error("estimate-rate stack:", err.stack);
+    res.json({ rate: null, confidence: "low", note: `Estimation failed: ${err?.message ?? "unknown error"}` });
+  }
+});
+
+app.get("/api/v1/gemini-test", async (_req, res) => {
+  try {
+    if (!process.env.GEMINI_API_KEY) return res.json({ ok: false, error: "No GEMINI_API_KEY set" });
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: "Reply with the word OK only.",
+    });
+    res.json({ ok: true, text: response.text ?? "(empty)", model: "gemini-2.5-flash" });
+  } catch (err: any) {
+    console.error("[gemini-test] error:", err?.message ?? err);
+    if (err?.stack) console.error("[gemini-test] stack:", err.stack);
+    res.json({ ok: false, error: err?.message ?? String(err), name: err?.name, status: (err as any)?.status });
   }
 });
 
