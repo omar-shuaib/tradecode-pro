@@ -1,7 +1,32 @@
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db.js";
 
-const MODEL = "gemini-2.5-flash";
+const MODELS = ["gemini-2.5-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
+
+let resolvedModel: string | null = null;
+
+function isModel3x(model: string): boolean {
+  return model.startsWith("gemini-3.");
+}
+
+async function getModel(ai: GoogleGenAI): Promise<string> {
+  if (resolvedModel) return resolvedModel;
+  for (const model of MODELS) {
+    try {
+      const config: Record<string, unknown> = isModel3x(model) ? {} : { temperature: 0.1 };
+      await ai.models.generateContent({ model, contents: "Reply with OK", config: { ...config, maxOutputTokens: 5 } });
+      resolvedModel = model;
+      console.log(`[gemini] resolved model: ${model}`);
+      return model;
+    } catch (err: any) {
+      console.warn(`[gemini] model ${model} failed:`, err?.message ?? err);
+    }
+  }
+  resolvedModel = MODELS[0];
+  return resolvedModel;
+}
+
+export { resolvedModel, isModel3x, getModel };
 
 export async function classify(description: string, country: string) {
   try {
@@ -13,8 +38,9 @@ export async function classify(description: string, country: string) {
     if (!process.env.GEMINI_API_KEY || count >= limit) return null;
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const model = await getModel(ai);
     const response = await ai.models.generateContent({
-      model: MODEL,
+      model,
       contents: `You are a customs classification expert. Return ONLY a JSON array of 5 objects for ${country === "BOTH" ? "China, India, and UAE" : country} HS codes for: "${description}".
 
 Rules:
@@ -26,7 +52,7 @@ Rules:
 - ${country === "BOTH" ? "Spread the 5 results across China, India, and UAE so each country has at least one result." : `All 5 results must be ${country} HS codes.`}
 
 Each object MUST have: country (one of "CN", "IN", "AE"), hsCode (8-digit string), descriptionEn (string), confidence (number 0-100). Rank by confidence descending.`,
-      config: { responseMimeType: "application/json", temperature: 0.1 },
+      config: isModel3x(model) ? { responseMimeType: "application/json" } : { responseMimeType: "application/json", temperature: 0.1 },
     });
 
     const raw = JSON.parse(response.text ?? "[]");

@@ -14,7 +14,7 @@ import {
 import { db } from "./db.js";
 import { calculate, rates } from "./services/duty.js";
 import { createSearchProvider } from "./services/search/index.js";
-import { classify } from "./services/gemini.js";
+import { classify, resolvedModel, isModel3x, getModel } from "./services/gemini.js";
 import { detectProductCategories } from "./product-categories.js";
 
 // TODO: monitoring-v2 - adopt Sentry and Grafana Cloud when traffic justifies it.
@@ -1339,13 +1339,15 @@ app.post("/api/v1/estimate-rate", async (req, res) => {
 
     const { GoogleGenAI } = await import("@google/genai");
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const model = await getModel(ai);
 
     const isChina = country === "CN";
     const prompt = isChina
       ? `What is the current MFN (Most Favoured Nation) import duty rate and VAT rate for China HS code ${hsCode}? Reply with ONLY a JSON object: {"mfn_duty_rate": <number or null>, "vat_rate": <number or null>, "confidence": "high"|"medium"|"low", "note": "<brief reason>"}. Use the current Chinese customs tariff schedule.`
       : `What is the current Basic Customs Duty (BCD) rate and IGST rate for India HS code ${hsCode}? Reply with ONLY a JSON object: {"bcd_rate": <number or null>, "igst_rate": <number or null>, "confidence": "high"|"medium"|"low", "note": "<brief reason>"}. Use the current 2025-26 Indian tariff schedule.`;
 
-    const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", temperature: 0.1 } });
+    const config: Record<string, unknown> = isModel3x(model) ? { responseMimeType: "application/json" } : { responseMimeType: "application/json", temperature: 0.1 };
+    const response = await ai.models.generateContent({ model, contents: prompt, config });
     const parsed = JSON.parse(response.text ?? "{}");
     const rate = isChina ? (parsed.mfn_duty_rate ?? null) : (parsed.bcd_rate ?? null);
     res.json({ rate, confidence: parsed.confidence ?? "low", note: parsed.note ?? "" });
@@ -1361,11 +1363,14 @@ app.get("/api/v1/gemini-test", async (_req, res) => {
     if (!process.env.GEMINI_API_KEY) return res.json({ ok: false, error: "No GEMINI_API_KEY set" });
     const { GoogleGenAI } = await import("@google/genai");
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const model = await getModel(ai);
+    const config: Record<string, unknown> = isModel3x(model) ? {} : { temperature: 0.1 };
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model,
       contents: "Reply with the word OK only.",
+      config,
     });
-    res.json({ ok: true, text: response.text ?? "(empty)", model: "gemini-2.5-flash" });
+    res.json({ ok: true, text: response.text ?? "(empty)", model });
   } catch (err: any) {
     console.error("[gemini-test] error:", err?.message ?? err);
     if (err?.stack) console.error("[gemini-test] stack:", err.stack);
