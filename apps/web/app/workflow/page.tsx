@@ -45,21 +45,21 @@ function estimateFreight(from: string, to: string, mode: string, shipmentType: s
 /* ─── step indicator ─── */
 function StepIndicator({ current, t }: { current: number; t: (k: any) => string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "24px 0 16px", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, padding: "32px 0 24px", flexWrap: "wrap" }}>
       {STEPS.map((_, i) => {
         const done = i < current - 1; const active = i === current - 1;
         return (
           <div key={i} style={{ display: "flex", alignItems: "center" }}>
             <div style={{
-              width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, fontWeight: 700, transition: "all 0.2s",
+              width: 38, height: 38, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 15, fontWeight: 700, transition: "all 0.2s",
               background: done ? "var(--accent)" : active ? "var(--accent-light)" : "var(--bg-elevated)",
               color: done ? "var(--accent-text, #fff)" : active ? "var(--accent)" : "var(--text-muted)",
               border: active ? "2px solid var(--accent)" : "1.5px solid var(--border)",
             }}>
               {done ? <Check style={{ width: 16, height: 16 }} /> : i + 1}
             </div>
-            <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? "var(--text)" : "var(--text-muted)", marginLeft: 6, marginRight: 16, whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? "var(--text)" : "var(--text-muted)", marginLeft: 8, marginRight: 20, whiteSpace: "nowrap" }}>
               {t(STEP_KEYS[i])}
             </span>
           </div>
@@ -142,8 +142,8 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
   }
 
   return (
-    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step2.title")}</h2>
+    <div style={{ width: "100%", maxWidth: 1200, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 26, fontWeight: 800, color: "var(--text)", marginBottom: 24 }}>{t("step2.title")}</h2>
 
       {/* Option cards */}
       {[
@@ -153,47 +153,47 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
       ].map(o => (
         <button key={o.key} onClick={() => { setOption(o.key); setError(""); setClassifyResults([]); }}
           className="card" style={{
-            display: "block", width: "100%", textAlign: "left", padding: 20, marginBottom: 12,
+            display: "block", width: "100%", textAlign: "left", padding: 28, marginBottom: 14,
             border: `1.5px solid ${option === o.key ? "var(--accent)" : "var(--border)"}`,
             background: option === o.key ? "var(--accent-light)" : "var(--bg-card)",
             cursor: "pointer", transition: "all 0.15s",
           }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
             {t(o.titleKey, { country: o.country ?? "" })}
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>{t(o.descKey)}</div>
+          <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 6 }}>{t(o.descKey)}</div>
         </button>
       ))}
 
       {/* Input area */}
       {option === "A" && (
-        <div style={{ marginTop: 8 }}>
-          <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 15, padding: "12px 14px" }} />
+        <div style={{ marginTop: 12 }}>
+          <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px" }} />
           <button className="btn-primary" onClick={() => lookupCode(hsInput, originCountry, true)} disabled={!hsInput.trim() || loading}
-            style={{ marginTop: 12, padding: "10px 24px", fontSize: 14 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
+            style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
         </div>
       )}
       {option === "B" && (
-        <div style={{ marginTop: 8 }}>
-          <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 15, padding: "12px 14px" }} />
+        <div style={{ marginTop: 12 }}>
+          <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px" }} />
           <button className="btn-primary" onClick={() => lookupCode(hsInput, destCountry, false)} disabled={!hsInput.trim() || loading}
-            style={{ marginTop: 12, padding: "10px 24px", fontSize: 14 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
+            style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
         </div>
       )}
       {option === "C" && (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 12 }}>
           <textarea className="input" value={descInput} onChange={e => setDescInput(e.target.value)} placeholder={t("step2.optionC.placeholder")}
-            style={{ width: "100%", fontSize: 15, padding: "12px 14px", minHeight: 100, resize: "vertical" }} />
+            style={{ width: "100%", fontSize: 16, padding: "14px 16px", minHeight: 120, resize: "vertical" }} />
           <button className="btn-primary" onClick={classifyProduct} disabled={!descInput.trim() || loading}
-            style={{ marginTop: 12, padding: "10px 24px", fontSize: 14 }}>{loading ? t("step2.loading") : t("step2.classify")}</button>
+            style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.classify")}</button>
           {classifyResults.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>{t("step2.selectCode")}</div>
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>{t("step2.selectCode")}</div>
               {classifyResults.map((item: any, i: number) => (
                 <button key={i} onClick={() => selectClassified(item)} disabled={loading}
-                  className="card" style={{ display: "block", width: "100%", textAlign: "left", padding: 14, marginBottom: 8, cursor: "pointer", border: "1px solid var(--border)", background: "var(--bg-card)" }}>
-                  <div style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 700, color: "var(--accent)" }}>{item.hsCode}</div>
-                  <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2 }}>{item.descriptionEn}</div>
+                  className="card" style={{ display: "block", width: "100%", textAlign: "left", padding: 18, marginBottom: 10, cursor: "pointer", border: "1px solid var(--border)", background: "var(--bg-card)" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>{item.hsCode}</div>
+                  <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 4 }}>{item.descriptionEn}</div>
                   {item.confidence != null && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{item.confidence}% confidence</div>}
                 </button>
               ))}
@@ -243,7 +243,7 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
     const isEst = data?.dataSource?.includes("gemini-estimate");
     const isClosest = (data as any)?.confidenceLabel != null;
     return (
-      <div className="card" style={{ flex: 1, padding: 20, minWidth: 260, borderStyle: isClosest ? "dashed" : undefined, borderColor: isClosest ? "var(--warning)" : undefined }}>
+      <div className="card" style={{ flex: 1, padding: 28, minWidth: 300, borderStyle: isClosest ? "dashed" : undefined, borderColor: isClosest ? "var(--warning)" : undefined }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>{label}</div>
         {data ? (
           <>
@@ -252,8 +252,8 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
                 {(data as any).confidenceLabel}
               </div>
             )}
-            <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{data.hsCode}</div>
-            <p style={{ margin: "6px 0", fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{data.descriptionEn}</p>
+            <div style={{ fontFamily: "monospace", fontSize: 24, fontWeight: 700, color: "var(--text)" }}>{data.hsCode}</div>
+            <p style={{ margin: "8px 0", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>{data.descriptionEn}</p>
             {data.descriptionLocal && <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>{data.descriptionLocal}</p>}
 
             {data.dutyRate != null ? (
@@ -293,23 +293,23 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
   }
 
   return (
-    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step3.title")}</h2>
+    <div style={{ width: "100%", maxWidth: 1200, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 26, fontWeight: 800, color: "var(--text)", marginBottom: 24 }}>{t("step3.title")}</h2>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {renderColumn(originData, t("step3.origin", { country: route.fromPort.country }), "origin", originDuty)}
         {renderColumn(destData, t("step3.destination", { country: route.toPort.country }), "dest", destDuty)}
       </div>
 
       {/* Shared CIF input */}
-      <div className="card" style={{ marginTop: 16, padding: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>CIF (USD)</label>
+      <div className="card" style={{ marginTop: 16, padding: 24, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <label style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>CIF (USD)</label>
         <input className="input" type="number" value={cif} onChange={e => setCif(Number(e.target.value) || 0)}
-          style={{ width: 120, fontSize: 14, padding: "8px 10px" }} />
+          style={{ width: 160, fontSize: 15, padding: "10px 14px" }} />
       </div>
 
       <button className="btn-primary" onClick={() => onComplete({ originCode: codes.originCode, destinationCode: codes.destinationCode, originCodeData: originData, destinationCodeData: destData })}
-        style={{ marginTop: 20, padding: "12px 28px", fontSize: 14 }}>
-        {t("step3.continue")} <ArrowRight style={{ width: 16, height: 16, marginLeft: 6, verticalAlign: "middle" }} />
+        style={{ marginTop: 24, padding: "16px 36px", fontSize: 15, fontWeight: 700 }}>
+        {t("step3.continue")} <ArrowRight style={{ width: 18, height: 18, marginLeft: 8, verticalAlign: "middle" }} />
       </button>
     </div>
   );
@@ -409,8 +409,8 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
   const CountryNames: Record<string, string> = { CN: t("common.china"), IN: t("common.india"), AE: t("common.uae") };
 
   return (
-    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step4.title")}</h2>
+    <div style={{ width: "100%", maxWidth: 1200, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 26, fontWeight: 800, color: "var(--text)", marginBottom: 24 }}>{t("step4.title")}</h2>
 
       {/* Pre-filled read-only */}
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
@@ -425,8 +425,8 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
       </div>
 
       {/* Editable form */}
-      <div className="card" style={{ padding: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" }}>
+      <div className="card" style={{ padding: 32 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
           {[
             { label: t("step4.seller") + " " + t("step4.name"), k: "sellerName" as const, type: "text", col: 1 },
             { label: t("step4.buyer") + " " + t("step4.name"), k: "buyerName" as const, type: "text", col: 1 },
@@ -437,56 +437,56 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{f.label}</label>
               {f.type === "textarea" ? (
                 <textarea className="input" value={String(form[f.k])} onChange={e => set(f.k, e.target.value)}
-                  style={{ width: "100%", minHeight: 56, fontSize: 13, padding: "8px 10px", resize: "vertical", boxSizing: "border-box" }} />
+                  style={{ width: "100%", minHeight: 72, fontSize: 14, padding: "10px 14px", resize: "vertical", boxSizing: "border-box" }} />
               ) : (
                 <input className="input" value={String(form[f.k])} onChange={e => set(f.k, e.target.value)}
-                  style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+                  style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
               )}
             </div>
           ))}
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.quantity")}</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.quantity")}</label>
             <input className="input" type="number" min={1} value={form.quantity} onChange={e => set("quantity", Number(e.target.value) || 1)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
-            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>{t("step4.quantity.helper")}</span>
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
+            <span style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "block" }}>{t("step4.quantity.helper")}</span>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.unit")}</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.unit")}</label>
             <select className="input" value={form.unit} onChange={e => set("unit", e.target.value)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }}>
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }}>
               {unitOptions.map(u => <option key={u} value={u}>{t(unitKeys[u] as any)}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.unitPrice")} (USD)</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.unitPrice")} (USD)</label>
             <input className="input" type="number" min={0} step={0.01} value={form.unitPrice} onChange={e => set("unitPrice", Number(e.target.value) || 0)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.packages")}</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.packages")}</label>
             <input className="input" type="number" min={1} value={form.packages} onChange={e => set("packages", Number(e.target.value) || 1)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
-            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, display: "block" }}>{t("step4.packages.helper")}</span>
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
+            <span style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "block" }}>{t("step4.packages.helper")}</span>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.length")} (cm)</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.length")} (cm)</label>
             <input className="input" type="number" min={0} value={form.lengthCm} onChange={e => set("lengthCm", Number(e.target.value) || 0)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.width")} (cm)</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.width")} (cm)</label>
             <input className="input" type="number" min={0} value={form.widthCm} onChange={e => set("widthCm", Number(e.target.value) || 0)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.height")} (cm)</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.height")} (cm)</label>
             <input className="input" type="number" min={0} value={form.heightCm} onChange={e => set("heightCm", Number(e.target.value) || 0)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.grossWeight")} (kg)</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("step4.grossWeight")} (kg)</label>
             <input className="input" type="number" min={0} step={0.1} value={form.grossWeightKg} onChange={e => set("grossWeightKg", Number(e.target.value) || 0)}
-              style={{ width: "100%", fontSize: 13, padding: "8px 10px", boxSizing: "border-box" }} />
+              style={{ width: "100%", fontSize: 14, padding: "10px 14px", boxSizing: "border-box" }} />
           </div>
         </div>
       </div>
@@ -502,26 +502,26 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
 
       {/* Validation message */}
       {anyEmpty && (
-        <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: "var(--radius-sm)", background: "var(--warning-light)", color: "var(--warning)", fontSize: 13 }}>
+        <div style={{ marginTop: 20, padding: "12px 16px", borderRadius: "var(--radius-sm)", background: "var(--warning-light)", color: "var(--warning)", fontSize: 14 }}>
           {t("step4.validationMessage")}
         </div>
       )}
 
       {/* PDF buttons */}
-      <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 14, marginTop: 20, flexWrap: "wrap" }}>
         <button onClick={generateInvoice} disabled={!invoiceValid} className="btn-primary" title={!invoiceValid ? t("step4.tooltipInvoice") : ""}
-          style={{ padding: "10px 20px", fontSize: 13, display: "flex", alignItems: "center", gap: 6, opacity: invoiceValid ? 1 : 0.5, cursor: invoiceValid ? "pointer" : "not-allowed" }}>
-          <FileText style={{ width: 16, height: 16 }} /> {t("step4.downloadInvoice")}
+          style={{ padding: "14px 24px", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, opacity: invoiceValid ? 1 : 0.5, cursor: invoiceValid ? "pointer" : "not-allowed" }}>
+          <FileText style={{ width: 18, height: 18 }} /> {t("step4.downloadInvoice")}
         </button>
         <button onClick={generatePackingList} disabled={!packingValid} className="btn-primary" title={!packingValid ? t("step4.tooltipPacking") : ""}
-          style={{ padding: "10px 20px", fontSize: 13, display: "flex", alignItems: "center", gap: 6, opacity: packingValid ? 1 : 0.5, cursor: packingValid ? "pointer" : "not-allowed" }}>
-          <Package style={{ width: 16, height: 16 }} /> {t("step4.downloadPacking")}
+          style={{ padding: "14px 24px", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, opacity: packingValid ? 1 : 0.5, cursor: packingValid ? "pointer" : "not-allowed" }}>
+          <Package style={{ width: 18, height: 18 }} /> {t("step4.downloadPacking")}
         </button>
       </div>
 
       <button className="btn-primary" onClick={() => onComplete(form)} disabled={!allValid}
-        style={{ marginTop: 20, padding: "12px 28px", fontSize: 14, opacity: allValid ? 1 : 0.5, cursor: allValid ? "pointer" : "not-allowed" }}>
-        {t("step4.continue")} <ArrowRight style={{ width: 16, height: 16, marginLeft: 6, verticalAlign: "middle" }} />
+        style={{ marginTop: 24, padding: "16px 36px", fontSize: 15, fontWeight: 700, opacity: allValid ? 1 : 0.5, cursor: allValid ? "pointer" : "not-allowed" }}>
+        {t("step4.continue")} <ArrowRight style={{ width: 18, height: 18, marginLeft: 8, verticalAlign: "middle" }} />
       </button>
     </div>
   );
@@ -560,11 +560,11 @@ function Step5Freight({ route, codes, docs }: { route: TradeRoute; codes: any; d
   }
 
   return (
-    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step5.title")}</h2>
+    <div style={{ width: "100%", maxWidth: 1200, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 26, fontWeight: 800, color: "var(--text)", marginBottom: 24 }}>{t("step5.title")}</h2>
 
       {/* Read-only summary */}
-      <div className="card" style={{ padding: 16, marginBottom: 16, fontSize: 13 }}>
+      <div className="card" style={{ padding: 24, marginBottom: 20, fontSize: 14 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px" }}>
           <div><span style={{ color: "var(--text-muted)" }}>{t("route.from")}: </span><b>{route.fromPort.code}</b></div>
           <div><span style={{ color: "var(--text-muted)" }}>{t("route.to")}: </span><b>{route.toPort.code}</b></div>
@@ -575,13 +575,13 @@ function Step5Freight({ route, codes, docs }: { route: TradeRoute; codes: any; d
       </div>
 
       {/* Shipment type selector */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>{t("step5.shipmentType")}</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>{t("step5.shipmentType")}</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {options.map(o => (
             <button key={o.value} onClick={() => setShipmentType(o.value)}
               style={{
-                padding: "10px 16px", fontSize: 13, fontWeight: 600, borderRadius: "var(--radius-sm)",
+                padding: "14px 24px", fontSize: 15, fontWeight: 600, borderRadius: "var(--radius-sm)",
                 border: `1.5px solid ${shipmentType === o.value ? "var(--accent)" : "var(--border)"}`,
                 background: shipmentType === o.value ? "var(--accent-light)" : "var(--bg-input)",
                 color: shipmentType === o.value ? "var(--accent)" : "var(--text-secondary)",
@@ -707,16 +707,16 @@ function PortDropdown({ label, selected, excludedCountry, mode, onSelect, placeh
       <button
         onClick={() => setOpen(!open)}
         style={{
-          width: "100%", padding: "14px 16px", textAlign: "left", fontSize: 15, fontWeight: 600,
+          width: "100%", padding: "18px 20px", textAlign: "left", fontSize: 16, fontWeight: 600,
           borderRadius: "var(--radius)", border: "1.5px solid var(--border)", background: "var(--bg-input)",
           color: selected ? "var(--text)" : "var(--text-muted)", cursor: "pointer", transition: "border-color 0.15s",
-          display: "flex", flexDirection: "column", gap: 2,
+          display: "flex", flexDirection: "column", gap: 4, minHeight: 64,
         }}
       >
         {selected ? (
           <>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>{selected.name}</span>
-            <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "monospace" }}>{selected.code} — {selected.city}</span>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>{selected.name}</span>
+            <span style={{ fontSize: 13, color: "var(--text-muted)", fontFamily: "monospace" }}>{selected.code} — {selected.city}</span>
           </>
         ) : (
           <span>{placeholder}</span>
@@ -791,15 +791,15 @@ function Step1Route({ onComplete }: { onComplete: (r: TradeRoute) => void }) {
   }
 
   return (
-    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 4, textAlign: "center" }}>
+    <div style={{ width: "100%", maxWidth: 1200, margin: "0 auto" }}>
+      <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", marginBottom: 6, textAlign: "center" }}>
         {t("route.title")}
       </h2>
-      <p style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center", marginBottom: 24 }}>
+      <p style={{ fontSize: 16, color: "var(--text-secondary)", textAlign: "center", marginBottom: 32 }}>
         {t("route.subtitle")}
       </p>
 
-      <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="card" style={{ padding: 40, display: "flex", flexDirection: "column", gap: 24 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
           <PortDropdown
             label={t("route.from")}
@@ -839,15 +839,15 @@ function Step1Route({ onComplete }: { onComplete: (r: TradeRoute) => void }) {
               key={value}
               onClick={() => { setMode(value); setFromPort(null); setToPort(null); }}
               style={{
-                flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, borderRadius: "var(--radius-sm)",
+                flex: 1, padding: "14px 0", fontSize: 15, fontWeight: 700, borderRadius: "var(--radius-sm)",
                 border: `1.5px solid ${mode === value ? "var(--accent)" : "var(--border)"}`,
                 background: mode === value ? "var(--accent-light)" : "var(--bg-input)",
                 color: mode === value ? "var(--accent)" : "var(--text-secondary)",
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 transition: "all 0.15s",
               }}
             >
-              <Icon style={{ width: 15, height: 15 }} /> {t(key)}
+              <Icon style={{ width: 18, height: 18 }} /> {t(key)}
             </button>
           ))}
         </div>
@@ -857,7 +857,7 @@ function Step1Route({ onComplete }: { onComplete: (r: TradeRoute) => void }) {
           disabled={!fromPort || !toPort}
           className="btn-primary"
           style={{
-            width: "100%", padding: "14px 0", fontSize: 15, fontWeight: 700, borderRadius: "var(--radius)",
+            width: "100%", padding: "18px 0", fontSize: 17, fontWeight: 700, borderRadius: "var(--radius)",
             opacity: !fromPort || !toPort ? 0.5 : 1, cursor: !fromPort || !toPort ? "not-allowed" : "pointer",
           }}
         >
@@ -893,12 +893,12 @@ export default function WorkflowPage() {
   }
 
   return (
-    <main className="page-shell" style={{ paddingBottom: 80, paddingTop: 24 }}>
+    <main className="page-shell" style={{ paddingBottom: 80, paddingTop: 24, maxWidth: 1400 }}>
       <StepIndicator current={step} t={t} />
 
       {/* Back button */}
       {step > 1 && (
-        <div style={{ width: "60%", maxWidth: 960, margin: "0 auto 12px" }}>
+        <div style={{ width: "100%", maxWidth: 1200, margin: "0 auto 12px" }}>
           <button onClick={() => {
             if (step === 2) { setRoute(null); setStep(1); sessionStorage.removeItem("traderoute"); }
             else setStep(s => s - 1);
