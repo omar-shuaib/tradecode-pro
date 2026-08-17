@@ -142,7 +142,7 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto" }}>
+    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step2.title")}</h2>
 
       {/* Option cards */}
@@ -293,7 +293,7 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto" }}>
+    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step3.title")}</h2>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         {renderColumn(originData, t("step3.origin", { country: route.fromPort.country }), "origin", originDuty)}
@@ -409,7 +409,7 @@ function Step4Documents({ route, codes, onComplete }: { route: TradeRoute; codes
   const CountryNames: Record<string, string> = { CN: t("common.china"), IN: t("common.india"), AE: t("common.uae") };
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto" }}>
+    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step4.title")}</h2>
 
       {/* Pre-filled read-only */}
@@ -560,7 +560,7 @@ function Step5Freight({ route, codes, docs }: { route: TradeRoute; codes: any; d
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto" }}>
+    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>{t("step5.title")}</h2>
 
       {/* Read-only summary */}
@@ -791,7 +791,7 @@ function Step1Route({ onComplete }: { onComplete: (r: TradeRoute) => void }) {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto" }}>
+    <div style={{ width: "60%", maxWidth: 960, margin: "0 auto" }}>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 4, textAlign: "center" }}>
         {t("route.title")}
       </h2>
@@ -898,7 +898,7 @@ export default function WorkflowPage() {
 
       {/* Back button */}
       {step > 1 && (
-        <div style={{ maxWidth: 800, margin: "0 auto 12px" }}>
+        <div style={{ width: "60%", maxWidth: 960, margin: "0 auto 12px" }}>
           <button onClick={() => {
             if (step === 2) { setRoute(null); setStep(1); sessionStorage.removeItem("traderoute"); }
             else setStep(s => s - 1);
