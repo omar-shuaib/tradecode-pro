@@ -14,7 +14,7 @@ import {
 import { db } from "./db.js";
 import { calculate, rates } from "./services/duty.js";
 import { createSearchProvider } from "./services/search/index.js";
-import { classify, resolvedModel, isModel3x, getModel } from "./services/gemini.js";
+import { classify, isModel3x, getModel } from "./services/gemini.js";
 import { detectProductCategories } from "./product-categories.js";
 
 // TODO: monitoring-v2 - adopt Sentry and Grafana Cloud when traffic justifies it.
@@ -1355,26 +1355,6 @@ app.post("/api/v1/estimate-rate", async (req, res) => {
     console.error("estimate-rate error:", err?.message ?? err);
     if (err?.stack) console.error("estimate-rate stack:", err.stack);
     res.json({ rate: null, confidence: "low", note: `Estimation failed: ${err?.message ?? "unknown error"}` });
-  }
-});
-
-app.get("/api/v1/gemini-test", async (_req, res) => {
-  try {
-    if (!process.env.GEMINI_API_KEY) return res.json({ ok: false, error: "No GEMINI_API_KEY set" });
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const model = await getModel(ai);
-    const config: Record<string, unknown> = isModel3x(model) ? {} : { temperature: 0.1 };
-    const response = await ai.models.generateContent({
-      model,
-      contents: "Reply with the word OK only.",
-      config,
-    });
-    res.json({ ok: true, text: response.text ?? "(empty)", model });
-  } catch (err: any) {
-    console.error("[gemini-test] error:", err?.message ?? err);
-    if (err?.stack) console.error("[gemini-test] stack:", err.stack);
-    res.json({ ok: false, error: err?.message ?? String(err), name: err?.name, status: (err as any)?.status });
   }
 });
 
