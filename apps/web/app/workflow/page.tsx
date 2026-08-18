@@ -69,6 +69,13 @@ function StepIndicator({ current, t }: { current: number; t: (k: any) => string 
   );
 }
 
+/* ─── country code → match-response field names ─── */
+const MATCH_FIELD: Record<string, { key: string; closestKey: string }> = {
+  CN: { key: "china", closestKey: "closestChina" },
+  IN: { key: "india", closestKey: "closestIndia" },
+  AE: { key: "uae", closestKey: "closestUae" },
+};
+
 /* ═══════════════════════════════════════════
    STEP 2 — Code Identification
    ═══════════════════════════════════════════ */
@@ -84,32 +91,40 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
   const originCountry = route.fromPort.country as "CN" | "IN" | "AE";
   const destCountry = route.toPort.country as "CN" | "IN" | "AE";
 
-  async function lookupCode(code: string, country: "CN" | "IN" | "AE", isOrigin: boolean) {
+  function fieldFromRow(row: any, countryCode: string) {
+    const f = MATCH_FIELD[countryCode];
+    return row?.[f.key] ?? row?.[f.closestKey] ?? null;
+  }
+
+  async function lookupCode(code: string, isOrigin: boolean) {
     setLoading(true); setError("");
     try {
-      const match = await api.match(code, country);
-      const row = match[0] ?? null;
+      let originData = null;
+      let destData = null;
 
-      const originKey = originCountry.toLowerCase() as "china" | "india" | "uae";
-      const closestOriginKey = (`closest${originKey.charAt(0).toUpperCase() + originKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
-      const destKey = destCountry.toLowerCase() as "china" | "india" | "uae";
-      const closestDestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
-
-      let originData = row?.[originKey] ?? row?.[closestOriginKey] ?? null;
-      let destData = row?.[destKey] ?? row?.[closestDestKey] ?? null;
-
-      if (!originData) {
-        try { originData = await api.code(originCountry as "CN"|"IN"|"AE", code); } catch {}
-      }
-      if (!destData) {
-        try { destData = await api.code(destCountry as "CN"|"IN"|"AE", code); } catch {}
+      if (isOrigin) {
+        try { originData = await api.code(originCountry, code); } catch {}
+        const match = await api.match(code, originCountry);
+        const row = match[0] ?? null;
+        destData = fieldFromRow(row, destCountry);
+        if (!destData) {
+          try { destData = await api.code(destCountry, code); } catch {}
+        }
+      } else {
+        try { destData = await api.code(destCountry, code); } catch {}
+        const match = await api.match(code, destCountry);
+        const row = match[0] ?? null;
+        originData = fieldFromRow(row, originCountry);
+        if (!originData) {
+          try { originData = await api.code(originCountry, code); } catch {}
+        }
       }
 
       onComplete({
         originCode: originData?.hsCode ?? code, originCodeData: originData,
         destinationCode: destData?.hsCode ?? "", destinationCodeData: destData,
       });
-    } catch { setError(t("step2.error.codeNotFound", { country })); setLoading(false); }
+    } catch { setError(t("step2.error.codeNotFound", { country: isOrigin ? originCountry : destCountry })); setLoading(false); }
   }
 
   async function classifyProduct() {
@@ -124,19 +139,12 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
   async function selectClassified(item: any) {
     setLoading(true); setError("");
     try {
+      const originData = { ...item, country: originCountry };
       const match = await api.match(item.hsCode, originCountry);
       const row = match[0] ?? null;
-
-      const originKey = originCountry.toLowerCase() as "china" | "india" | "uae";
-      const closestOriginKey = (`closest${originKey.charAt(0).toUpperCase() + originKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
-      const destKey = destCountry.toLowerCase() as "china" | "india" | "uae";
-      const closestDestKey = (`closest${destKey.charAt(0).toUpperCase() + destKey.slice(1)}`) as "closestChina" | "closestIndia" | "closestUae";
-
-      let originData = row?.[originKey] ?? row?.[closestOriginKey] ?? { ...item, country: originCountry };
-      let destData = row?.[destKey] ?? row?.[closestDestKey] ?? null;
-
+      let destData = fieldFromRow(row, destCountry);
       if (!destData) {
-        try { destData = await api.code(destCountry as "CN"|"IN"|"AE", item.hsCode); } catch {}
+        try { destData = await api.code(destCountry, item.hsCode); } catch {}
       }
 
       onComplete({
@@ -174,14 +182,14 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
       {option === "A" && (
         <div style={{ marginTop: 12 }}>
           <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px" }} />
-          <button className="btn-primary" onClick={() => lookupCode(hsInput, originCountry, true)} disabled={!hsInput.trim() || loading}
+          <button className="btn-primary" onClick={() => lookupCode(hsInput, true)} disabled={!hsInput.trim() || loading}
             style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
         </div>
       )}
       {option === "B" && (
         <div style={{ marginTop: 12 }}>
           <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px" }} />
-          <button className="btn-primary" onClick={() => lookupCode(hsInput, destCountry, false)} disabled={!hsInput.trim() || loading}
+          <button className="btn-primary" onClick={() => lookupCode(hsInput, false)} disabled={!hsInput.trim() || loading}
             style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
         </div>
       )}
@@ -291,13 +299,17 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
               <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-secondary)" }}>
                 {duty.lines.map((l: any) => <div key={l.label} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}><span>{l.label}</span><span style={{ fontFamily: "monospace" }}>${l.amount.toFixed(2)}</span></div>)}
                 <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 4, marginTop: 4, fontWeight: 700 }}>
-                  <span>{t("popup.landed.cost")}</span><span style={{ fontFamily: "monospace" }}>${duty.landedCost.toFixed(2)}</span>
+                  <span>{t("popup.landed.cost")}</span>
+                  <span style={{ fontFamily: "monospace" }}>
+                    ${duty.landedCost.toFixed(2)}
+                    {duty.currency === "AED" && <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 6 }}>(AED {(duty.landedCost * duty.exchangeRate).toFixed(2)})</span>}
+                  </span>
                 </div>
               </div>
             )}
           </>
         ) : (
-          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("compare.no.data")}</p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>{t("step3.noRecord", { country: label })}</p>
         )}
       </div>
     );

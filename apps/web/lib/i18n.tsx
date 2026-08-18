@@ -79,6 +79,7 @@ const translations = {
     "step3.estimateAi": "Estimate with AI",
     "step3.estimating": "Estimating...",
     "step3.continue": "Continue to documents",
+    "step3.noRecord": "No record found for {country}",
 
     // Step 4 — Documents
     "step4.title": "Draft documents",
@@ -404,6 +405,7 @@ const translations = {
     "step3.estimateAi": "AI估算",
     "step3.estimating": "估算中...",
     "step3.continue": "继续生成单证",
+    "step3.noRecord": "未找到{country}的记录",
 
     // Step 4
     "step4.title": "草拟单证",
@@ -730,6 +732,7 @@ const translations = {
     "step3.estimateAi": "Estimate with AI",
     "step3.estimating": "Estimating...",
     "step3.continue": "Continue to documents",
+    "step3.noRecord": "No record found for {country}",
 
     // Step 4
     "step4.title": "Draft documents",
