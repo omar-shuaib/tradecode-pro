@@ -70,6 +70,7 @@ const translations = {
     "step2.error.invalidFormat": "Please enter a valid HS code (4–10 digits)",
     "step2.error.codeNotFound": "No code found for {code} in {country} database. Check the code and try again.",
     "step2.error.classifyFailed": "Classification failed. Try again.",
+    "step2.classifyRetry": "Retry classification",
     "step2.continue": "Continue to compare",
 
     // Step 3 — Compare
@@ -208,6 +209,11 @@ const translations = {
     "classify.sample.herbal": "packaged herbal tea",
     "classify.sample.lithium": "lithium battery pack",
     "classify.sample.plastic": "plastic kitchen container",
+    "classify.status.gemini": "✓ AI Classification (Gemini)",
+    "classify.status.fallback": "⚠ Keyword fallback — Gemini unavailable",
+    "classify.retryable.title": "AI classification temporarily unavailable",
+    "classify.retryable.desc": "Please try again in a moment.",
+    "classify.retryable.btn": "Retry",
 
     // Compare
     "compare.label": "Compare",
@@ -399,6 +405,7 @@ const translations = {
     "step2.error.invalidFormat": "请输入有效的HS编码（4–10位数字）",
     "step2.error.codeNotFound": "在{country}数据库中未找到编码{code}，请检查后重试。",
     "step2.error.classifyFailed": "分类失败，请重试。",
+    "step2.classifyRetry": "重新分类",
     "step2.continue": "继续对比",
 
     // Step 3
@@ -537,6 +544,11 @@ const translations = {
     "classify.sample.herbal": "袋装花草茶",
     "classify.sample.lithium": "锂电池组",
     "classify.sample.plastic": "塑料厨房容器",
+    "classify.status.gemini": "✓ AI分类（Gemini）",
+    "classify.status.fallback": "⚠ 关键词回退 — Gemini不可用",
+    "classify.retryable.title": "AI分类暂时不可用",
+    "classify.retryable.desc": "请稍后重试。",
+    "classify.retryable.btn": "重试",
 
     // Compare
     "compare.label": "比较",
@@ -729,6 +741,7 @@ const translations = {
     "step2.error.invalidFormat": "Please enter a valid HS code (4–10 digits)",
     "step2.error.codeNotFound": "No code found for {code} in {country} database. Check the code and try again.",
     "step2.error.classifyFailed": "Classification failed. Try again.",
+    "step2.classifyRetry": "Retry classification",
     "step2.continue": "Continue to compare",
 
     // Step 3
@@ -867,6 +880,11 @@ const translations = {
     "classify.sample.herbal": "packaged herbal tea",
     "classify.sample.lithium": "lithium battery pack",
     "classify.sample.plastic": "plastic kitchen container",
+    "classify.status.gemini": "✓ AI Classification (Gemini)",
+    "classify.status.fallback": "⚠ Keyword fallback — Gemini unavailable",
+    "classify.retryable.title": "AI classification temporarily unavailable",
+    "classify.retryable.desc": "Please try again in a moment.",
+    "classify.retryable.btn": "Retry",
 
     // Compare
     "compare.label": "Compare",

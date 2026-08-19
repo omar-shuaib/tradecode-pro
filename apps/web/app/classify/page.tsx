@@ -133,7 +133,7 @@ export default function ClassifyPage() {
     t("classify.sample.plastic"),
   ];
 
-  async function classify() {
+  async function classifyProduct() {
     setLoading(true);
     try {
       setResult(await api.classify({ description, country: "BOTH", lang: "en" }));
@@ -143,6 +143,7 @@ export default function ClassifyPage() {
   }
 
   const items = (result?.results ?? []).map(normalizeResult);
+  const isRetryable = result?.retryable === true && items.length === 0;
 
   // Group by country, each already sorted by confidence from backend
   const byCountry: Record<string, ClassifiedItem[]> = {
@@ -257,7 +258,7 @@ export default function ClassifyPage() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
             className="btn-primary"
-            onClick={classify}
+            onClick={classifyProduct}
             disabled={!description.trim() || loading}
             style={{ height: 42, opacity: !description.trim() || loading ? 0.6 : 1, cursor: !description.trim() || loading ? "not-allowed" : "pointer" }}
           >
@@ -286,12 +287,35 @@ export default function ClassifyPage() {
                   {result.fallback ? t("classify.result.fallback") : t("classify.result.direct")}
                 </div>
               </div>
-              <span className={cn("badge", items.length ? "badge-success" : "badge-warning")}>
-                {t("classify.result.matches", { n: items.length })}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="badge" style={{
+                  backgroundColor: result.fallback ? "var(--warning-light)" : "var(--success-light)",
+                  color: result.fallback ? "var(--warning)" : "var(--success)",
+                  fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                }}>
+                  {result.fallback ? t("classify.status.fallback") : t("classify.status.gemini")}
+                </span>
+                <span className={cn("badge", items.length ? "badge-success" : "badge-warning")}>
+                  {t("classify.result.matches", { n: items.length })}
+                </span>
+              </div>
             </div>
 
-            {items.length > 0 ? (
+            {isRetryable ? (
+              <div className="card" style={{ padding: 32, textAlign: "center", borderLeft: "3px solid var(--warning)" }}>
+                <AlertTriangle style={{ width: 32, height: 32, color: "var(--warning)", margin: "0 auto 10px" }} />
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
+                  {t("classify.retryable.title")}
+                </p>
+                <p style={{ margin: "6px 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
+                  {result.message || t("classify.retryable.desc")}
+                </p>
+                <button className="btn-primary" onClick={classifyProduct}
+                  style={{ padding: "10px 24px", fontSize: 14, fontWeight: 600 }}>
+                  {t("classify.retryable.btn")}
+                </button>
+              </div>
+            ) : items.length > 0 ? (
               <div style={{ display: "grid", gap: 24 }}>
                 {(Object.keys(byCountry) as Array<keyof typeof byCountry>).map((code) => {
                   const countryItems = byCountry[code];

@@ -14,7 +14,7 @@ import {
 import { db } from "./db.js";
 import { calculate, rates } from "./services/duty.js";
 import { createSearchProvider } from "./services/search/index.js";
-import { classify, isModel3x, getModel } from "./services/gemini.js";
+import { classify, isModel3x, getModel, resolvedModel } from "./services/gemini.js";
 import { detectProductCategories } from "./product-categories.js";
 
 // TODO: monitoring-v2 - adopt Sentry and Grafana Cloud when traffic justifies it.
@@ -1306,26 +1306,46 @@ app.post("/api/v1/duty-calculate", async (req, res) => {
 });
 
 app.post("/api/v1/classify", async (req, res) => {
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAY_MS = 2000;
+
   try {
     const payload = ClassifyRequestSchema.parse(req.body);
-    const ai = await classify(payload.description, payload.country);
-    let results: any[] = ai ?? (await fallbackClassify(payload.description, payload.country, 15));
 
-    if (ai) {
-      const enriched: any[] = [];
-      for (const r of ai) {
-        const dbRow =
-          r.country === "CN" ? await getChinaCode(r.hsCode) :
-          r.country === "IN" ? await getIndiaCode(r.hsCode) :
-          await getUaeCode(r.hsCode);
-        enriched.push(dbRow
-          ? { ...r, ...dbRow, descriptionEn: r.descriptionEn || dbRow.descriptionEn || "" }
-          : r);
+    let ai: any[] | null = null;
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        ai = await classify(payload.description, payload.country);
+        if (ai && ai.length > 0) break;
+        ai = null;
+      } catch (err: any) {
+        lastError = err;
+        const status = err?.status ?? err?.statusCode ?? err?.response?.status;
+        const isRetryable = status === 503 || status === 429;
+        console.error(`[classify] attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err?.message ?? err);
+        if (!isRetryable) break;
+        if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
       }
-      results = enriched;
     }
 
-    res.json({ fallback: !ai, results });
+    if (!ai || ai.length === 0) {
+      return res.json({ fallback: false, results: [], retryable: true, message: "AI classification temporarily unavailable. Please try again in a moment." });
+    }
+
+    const enriched: any[] = [];
+    for (const r of ai) {
+      const dbRow =
+        r.country === "CN" ? await getChinaCode(r.hsCode) :
+        r.country === "IN" ? await getIndiaCode(r.hsCode) :
+        await getUaeCode(r.hsCode);
+      enriched.push(dbRow
+        ? { ...r, ...dbRow, descriptionEn: r.descriptionEn || dbRow.descriptionEn || "" }
+        : r);
+    }
+
+    res.json({ fallback: false, results: enriched });
   } catch (err: any) {
     console.error("Classify error:", err?.message ?? err);
     res.status(500).json({ error: String(err?.message ?? err) });
@@ -1378,6 +1398,7 @@ app.get("/health", async (_req, res) => {
     database,
     supabase: database,
     geminiKeyPresent: Boolean(process.env.GEMINI_API_KEY),
+    geminiModel: resolvedModel ?? "not yet resolved",
   });
 });
 

@@ -87,6 +87,9 @@ function Step2Code({ route, onComplete, prefillDesc, onBackToClassify }: { route
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [classifyResults, setClassifyResults] = useState<any[]>([]);
+  const [classifyFallback, setClassifyFallback] = useState(false);
+  const [classifyRetryable, setClassifyRetryable] = useState(false);
+  const [classifyRetryMsg, setClassifyRetryMsg] = useState("");
   const [acResults, setAcResults] = useState<any[]>([]);
   const [showAcDropdown, setShowAcDropdown] = useState(false);
   const [acLoading, setAcLoading] = useState(false);
@@ -173,10 +176,16 @@ function Step2Code({ route, onComplete, prefillDesc, onBackToClassify }: { route
   }
 
   async function classifyProduct() {
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setClassifyRetryable(false);
     try {
       const res = await api.classify({ description: descInput, country: originCountry, lang: "en" });
-      setClassifyResults((res.results ?? []).slice(0, 5));
+      if (res.retryable && (!res.results || res.results.length === 0)) {
+        setClassifyRetryable(true);
+        setClassifyRetryMsg(res.message || t("classify.retryable.desc"));
+      } else {
+        setClassifyResults((res.results ?? []).slice(0, 5));
+        setClassifyFallback(!!res.fallback);
+      }
     } catch { setError(t("step2.error.classifyFailed")); }
     setLoading(false);
   }
@@ -209,7 +218,7 @@ function Step2Code({ route, onComplete, prefillDesc, onBackToClassify }: { route
         { key: "B" as const, titleKey: "step2.optionB.title" as const, descKey: "step2.optionB.desc" as const, country: destCountry },
         { key: "C" as const, titleKey: "step2.optionC.title" as const, descKey: "step2.optionC.desc" as const, country: null },
       ].map(o => (
-        <button key={o.key} onClick={() => { setOption(o.key); setError(""); setClassifyResults([]); setAcResults([]); setShowAcDropdown(false); }}
+        <button key={o.key} onClick={() => { setOption(o.key); setError(""); setClassifyResults([]); setAcResults([]); setShowAcDropdown(false); setClassifyRetryable(false); setClassifyFallback(false); }}
           className="card" style={{
             display: "block", width: "100%", textAlign: "left", padding: 28, marginBottom: 14,
             border: `1.5px solid ${option === o.key ? "var(--accent)" : "var(--border)"}`,
@@ -278,9 +287,26 @@ function Step2Code({ route, onComplete, prefillDesc, onBackToClassify }: { route
             style={{ width: "100%", fontSize: 16, padding: "14px 16px", minHeight: 120, resize: "vertical" }} />
           <button className="btn-primary" onClick={classifyProduct} disabled={!descInput.trim() || loading}
             style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.classify")}</button>
+          {classifyRetryable && (
+            <div style={{ marginTop: 14, padding: "14px 18px", borderRadius: "var(--radius-sm)", background: "var(--warning-light)", borderLeft: "3px solid var(--warning)" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--warning)", marginBottom: 4 }}>{classifyRetryMsg || t("classify.retryable.title")}</div>
+              <button className="btn-primary" onClick={classifyProduct} style={{ marginTop: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600 }}>
+                {t("classify.retryable.btn")}
+              </button>
+            </div>
+          )}
           {classifyResults.length > 0 && (
             <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>{t("step2.selectCode")}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>{t("step2.selectCode")}</div>
+                <span className="badge" style={{
+                  backgroundColor: classifyFallback ? "var(--warning-light)" : "var(--success-light)",
+                  color: classifyFallback ? "var(--warning)" : "var(--success)",
+                  fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                }}>
+                  {classifyFallback ? t("classify.status.fallback") : t("classify.status.gemini")}
+                </span>
+              </div>
               {classifyResults.map((item: any, i: number) => {
                 const conf = item.confidence ?? Math.max(10, 90 - i * 15);
                 const isBest = i === 0 && conf >= 50;
