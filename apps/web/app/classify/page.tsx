@@ -358,6 +358,12 @@ export default function ClassifyPage() {
                                 )}
                                 <span
                                   className="badge"
+                                  style={{ backgroundColor: "var(--bg-elevated)", color: "var(--text-muted)", fontSize: 11, padding: "1px 6px", fontFamily: "monospace" }}
+                                >
+                                  Ch {item.hsCode.slice(0, 2)}
+                                </span>
+                                <span
+                                  className="badge"
                                   style={{ backgroundColor: meta.bg, color: meta.color, fontSize: 11, padding: "1px 6px" }}
                                 >
                                   {meta.label}

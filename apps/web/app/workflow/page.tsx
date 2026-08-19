@@ -202,14 +202,42 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
           {classifyResults.length > 0 && (
             <div style={{ marginTop: 20 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>{t("step2.selectCode")}</div>
-              {classifyResults.map((item: any, i: number) => (
-                <button key={i} onClick={() => selectClassified(item)} disabled={loading}
-                  className="card" style={{ display: "block", width: "100%", textAlign: "left", padding: 18, marginBottom: 10, cursor: "pointer", border: "1px solid var(--border)", background: "var(--bg-card)" }}>
-                  <div style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>{item.hsCode}</div>
-                  <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 4 }}>{item.descriptionEn}</div>
-                  {item.confidence != null && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{item.confidence}% confidence</div>}
-                </button>
-              ))}
+              {classifyResults.map((item: any, i: number) => {
+                const conf = item.confidence ?? Math.max(10, 90 - i * 15);
+                const isBest = i === 0 && conf >= 50;
+                return (
+                  <button key={i} onClick={() => selectClassified(item)} disabled={loading}
+                    className="card" style={{
+                      display: "block", width: "100%", textAlign: "left", padding: 18, marginBottom: 10,
+                      cursor: "pointer", border: isBest ? "1px solid var(--success)" : "1px solid var(--border)",
+                      borderLeft: isBest ? "4px solid var(--success)" : "1px solid var(--border)",
+                      background: isBest ? "var(--success-light)" : "var(--bg-card)",
+                    }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: "monospace", fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>{item.hsCode}</span>
+                      <span className="badge" style={{ fontSize: 11, padding: "1px 6px", background: "var(--bg-elevated)", color: "var(--text-muted)", fontFamily: "monospace" }}>
+                        Ch {item.hsCode.slice(0, 2)}
+                      </span>
+                      {isBest && (
+                        <span className="badge" style={{ background: "var(--success)", color: "#fff", fontSize: 10, padding: "1px 6px" }}>
+                          Best
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 4 }}>{item.descriptionEn}</div>
+                    {item.confidence != null && (
+                      <div style={{
+                        marginTop: 6, fontSize: 13, fontWeight: 700, fontFamily: "monospace",
+                        color: conf >= 70 ? "var(--success)" : conf >= 40 ? "var(--accent)" : "var(--warning)",
+                        background: conf >= 70 ? "var(--success-light)" : conf >= 40 ? "var(--accent-light)" : "var(--warning-light)",
+                        display: "inline-block", padding: "2px 8px", borderRadius: 9999,
+                      }}>
+                        {conf}% confidence
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

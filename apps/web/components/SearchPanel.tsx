@@ -395,6 +395,9 @@ export function SearchPanel() {
                         <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace", color: "var(--text)" }}>
                           {primary.hsCode}
                         </div>
+                        <span className="badge" style={{ fontSize: 11, padding: "1px 6px", background: "var(--bg-elevated)", color: "var(--text-muted)", fontFamily: "monospace" }}>
+                          Ch {primary.hsCode.slice(0, 2)}
+                        </span>
                         {(primary.confidence ?? 0) >= 80 && (
                           <span className="best-match-badge">Best</span>
                         )}
