@@ -67,7 +67,8 @@ const translations = {
     "step2.lookup": "Look up code",
     "step2.selectCode": "Select the best match",
     "step2.loading": "Looking up code...",
-    "step2.error.codeNotFound": "Code not found in {country} database",
+    "step2.error.invalidFormat": "Please enter a valid HS code (4–10 digits)",
+    "step2.error.codeNotFound": "No code found for {code} in {country} database. Check the code and try again.",
     "step2.error.classifyFailed": "Classification failed. Try again.",
     "step2.continue": "Continue to compare",
 
@@ -80,6 +81,8 @@ const translations = {
     "step3.estimating": "Estimating...",
     "step3.continue": "Continue to documents",
     "step3.noRecord": "No record found for {country}",
+    "step3.noMatchDestination": "No direct match found for this code in {country}. This product may be classified differently in {country}. Try describing your product instead.",
+    "step3.classifyByDesc": "Classify by description",
 
     // Step 4 — Documents
     "step4.title": "Draft documents",
@@ -393,7 +396,8 @@ const translations = {
     "step2.lookup": "查询编码",
     "step2.selectCode": "选择最佳匹配",
     "step2.loading": "查询编码中...",
-    "step2.error.codeNotFound": "在{country}数据库中未找到该编码",
+    "step2.error.invalidFormat": "请输入有效的HS编码（4–10位数字）",
+    "step2.error.codeNotFound": "在{country}数据库中未找到编码{code}，请检查后重试。",
     "step2.error.classifyFailed": "分类失败，请重试。",
     "step2.continue": "继续对比",
 
@@ -406,6 +410,8 @@ const translations = {
     "step3.estimating": "估算中...",
     "step3.continue": "继续生成单证",
     "step3.noRecord": "未找到{country}的记录",
+    "step3.noMatchDestination": "在{country}中未找到该编码的直接匹配。该产品在{country}可能有不同的分类方式。请尝试通过产品描述进行分类。",
+    "step3.classifyByDesc": "通过描述分类",
 
     // Step 4
     "step4.title": "草拟单证",
@@ -720,7 +726,8 @@ const translations = {
     "step2.lookup": "Look up code",
     "step2.selectCode": "Select the best match",
     "step2.loading": "Looking up code...",
-    "step2.error.codeNotFound": "Code not found in {country} database",
+    "step2.error.invalidFormat": "Please enter a valid HS code (4–10 digits)",
+    "step2.error.codeNotFound": "No code found for {code} in {country} database. Check the code and try again.",
     "step2.error.classifyFailed": "Classification failed. Try again.",
     "step2.continue": "Continue to compare",
 
@@ -733,6 +740,8 @@ const translations = {
     "step3.estimating": "Estimating...",
     "step3.continue": "Continue to documents",
     "step3.noRecord": "No record found for {country}",
+    "step3.noMatchDestination": "No direct match found for this code in {country}. This product may be classified differently in {country}. Try describing your product instead.",
+    "step3.classifyByDesc": "Classify by description",
 
     // Step 4
     "step4.title": "Draft documents",

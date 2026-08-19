@@ -79,7 +79,7 @@ const MATCH_FIELD: Record<string, { key: string; closestKey: string }> = {
 /* ═══════════════════════════════════════════
    STEP 2 — Code Identification
    ═══════════════════════════════════════════ */
-function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (codes: any) => void }) {
+function Step2Code({ route, onComplete, prefillDesc, onBackToClassify }: { route: TradeRoute; onComplete: (codes: any) => void; prefillDesc?: string; onBackToClassify?: (desc: string) => void }) {
   const { t } = useTranslation();
   const [option, setOption] = useState<"A" | "B" | "C" | null>(null);
   const [hsInput, setHsInput] = useState("");
@@ -87,6 +87,10 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [classifyResults, setClassifyResults] = useState<any[]>([]);
+  const [acResults, setAcResults] = useState<any[]>([]);
+  const [showAcDropdown, setShowAcDropdown] = useState(false);
+  const [acLoading, setAcLoading] = useState(false);
+  const acWrapperRef = useRef<HTMLDivElement>(null);
 
   const originCountry = route.fromPort.country as "CN" | "IN" | "AE";
   const destCountry = route.toPort.country as "CN" | "IN" | "AE";
@@ -96,14 +100,54 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
     return row?.[f.key] ?? row?.[f.closestKey] ?? null;
   }
 
-  async function lookupCode(code: string, isOrigin: boolean) {
+  useEffect(() => {
+    if (prefillDesc) { setOption("C"); setDescInput(prefillDesc); }
+  }, [prefillDesc]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (acWrapperRef.current && !acWrapperRef.current.contains(e.target as Node)) setShowAcDropdown(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const val = hsInput.trim();
+    if (val.length < 4 || !option || option === "C") { setAcResults([]); setShowAcDropdown(false); return; }
+    setAcLoading(true);
+    const country = option === "A" ? originCountry : destCountry;
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await api.autocomplete(val, country);
+        const results = (res.results ?? []).slice(0, 8);
+        setAcResults(results);
+        setShowAcDropdown(results.length > 0);
+      } catch { setAcResults([]); setShowAcDropdown(false); }
+      setAcLoading(false);
+    }, 300);
+    return () => { window.clearTimeout(timer); setAcLoading(false); };
+  }, [hsInput, option, originCountry, destCountry]);
+
+  function handleAcSelect(code: string) {
+    setHsInput(code);
+    setShowAcDropdown(false);
+    setAcResults([]);
     setLoading(true); setError("");
+    const isOrigin = option === "A";
+    lookupCode(code, isOrigin);
+  }
+
+  async function lookupCode(code: string, isOrigin: boolean) {
+    if (!/^\d{4,10}$/.test(code)) { setError(t("step2.error.invalidFormat")); return; }
+    setLoading(true); setError(""); setShowAcDropdown(false);
     try {
       let originData = null;
       let destData = null;
 
       if (isOrigin) {
         try { originData = await api.code(originCountry, code); } catch {}
+        if (!originData) { setError(t("step2.error.codeNotFound", { code, country: originCountry })); setLoading(false); return; }
         const match = await api.match(code, originCountry);
         const row = match[0] ?? null;
         destData = fieldFromRow(row, destCountry);
@@ -112,6 +156,7 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
         }
       } else {
         try { destData = await api.code(destCountry, code); } catch {}
+        if (!destData) { setError(t("step2.error.codeNotFound", { code, country: destCountry })); setLoading(false); return; }
         const match = await api.match(code, destCountry);
         const row = match[0] ?? null;
         originData = fieldFromRow(row, originCountry);
@@ -124,7 +169,7 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
         originCode: originData?.hsCode ?? code, originCodeData: originData,
         destinationCode: destData?.hsCode ?? "", destinationCodeData: destData,
       });
-    } catch { setError(t("step2.error.codeNotFound", { country: isOrigin ? originCountry : destCountry })); setLoading(false); }
+    } catch { setError(t("step2.error.codeNotFound", { code, country: isOrigin ? originCountry : destCountry })); setLoading(false); }
   }
 
   async function classifyProduct() {
@@ -164,7 +209,7 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
         { key: "B" as const, titleKey: "step2.optionB.title" as const, descKey: "step2.optionB.desc" as const, country: destCountry },
         { key: "C" as const, titleKey: "step2.optionC.title" as const, descKey: "step2.optionC.desc" as const, country: null },
       ].map(o => (
-        <button key={o.key} onClick={() => { setOption(o.key); setError(""); setClassifyResults([]); }}
+        <button key={o.key} onClick={() => { setOption(o.key); setError(""); setClassifyResults([]); setAcResults([]); setShowAcDropdown(false); }}
           className="card" style={{
             display: "block", width: "100%", textAlign: "left", padding: 28, marginBottom: 14,
             border: `1.5px solid ${option === o.key ? "var(--accent)" : "var(--border)"}`,
@@ -180,15 +225,49 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
 
       {/* Input area */}
       {option === "A" && (
-        <div style={{ marginTop: 12 }}>
-          <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px" }} />
+        <div style={{ marginTop: 12 }} ref={acWrapperRef}>
+          <div style={{ position: "relative" }}>
+            <input className="input" value={hsInput} onChange={e => { setHsInput(e.target.value); setError(""); }} onKeyDown={e => { if (e.key === "Escape") setShowAcDropdown(false); }}
+              placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px", paddingRight: acLoading ? 44 : 16 }} />
+            {acLoading && <Loader2 className="spin" style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, color: "var(--text-muted)" }} />}
+            {showAcDropdown && acResults.length > 0 && (
+              <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-lg)", zIndex: 30, maxHeight: 320, overflowY: "auto" }}>
+                {acResults.map((item: any) => (
+                  <button key={item.hsCode} type="button" onClick={() => handleAcSelect(item.hsCode)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid var(--border)", background: "transparent", cursor: "pointer", textAlign: "left", transition: "background-color 0.15s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-elevated)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600, color: "var(--accent)", minWidth: 80 }}>{item.hsCode}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{(item.descriptionEn ?? "").slice(0, 60)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button className="btn-primary" onClick={() => lookupCode(hsInput, true)} disabled={!hsInput.trim() || loading}
             style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
         </div>
       )}
       {option === "B" && (
-        <div style={{ marginTop: 12 }}>
-          <input className="input" value={hsInput} onChange={e => setHsInput(e.target.value)} placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px" }} />
+        <div style={{ marginTop: 12 }} ref={option === "B" ? acWrapperRef : undefined}>
+          <div style={{ position: "relative" }}>
+            <input className="input" value={hsInput} onChange={e => { setHsInput(e.target.value); setError(""); }} onKeyDown={e => { if (e.key === "Escape") setShowAcDropdown(false); }}
+              placeholder={t("step2.optionA.placeholder")} style={{ width: "100%", fontSize: 16, padding: "14px 16px", paddingRight: acLoading ? 44 : 16 }} />
+            {acLoading && <Loader2 className="spin" style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, color: "var(--text-muted)" }} />}
+            {showAcDropdown && acResults.length > 0 && (
+              <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-lg)", zIndex: 30, maxHeight: 320, overflowY: "auto" }}>
+                {acResults.map((item: any) => (
+                  <button key={item.hsCode} type="button" onClick={() => handleAcSelect(item.hsCode)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 14px", border: "none", borderBottom: "1px solid var(--border)", background: "transparent", cursor: "pointer", textAlign: "left", transition: "background-color 0.15s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-elevated)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 14, fontWeight: 600, color: "var(--accent)", minWidth: 80 }}>{item.hsCode}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{(item.descriptionEn ?? "").slice(0, 60)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button className="btn-primary" onClick={() => lookupCode(hsInput, false)} disabled={!hsInput.trim() || loading}
             style={{ marginTop: 14, padding: "14px 28px", fontSize: 15, fontWeight: 700 }}>{loading ? t("step2.loading") : t("step2.lookup")}</button>
         </div>
@@ -251,7 +330,7 @@ function Step2Code({ route, onComplete }: { route: TradeRoute; onComplete: (code
 /* ═══════════════════════════════════════════
    STEP 3 — Compare
    ═══════════════════════════════════════════ */
-function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: any; onComplete: (c: any) => void }) {
+function Step3Compare({ route, codes, onComplete, onBackToClassify }: { route: TradeRoute; codes: any; onComplete: (c: any) => void; onBackToClassify?: (desc: string) => void }) {
   const { t } = useTranslation();
   const [originData, setOriginData] = useState<CodeResult | null>(codes.originCodeData);
   const [destData, setDestData] = useState<CodeResult | null>(codes.destinationCodeData);
@@ -337,7 +416,19 @@ function Step3Compare({ route, codes, onComplete }: { route: TradeRoute; codes: 
             )}
           </>
         ) : (
-          <p style={{ fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>{t("step3.noRecord", { country: label })}</p>
+          which === "dest" && originData ? (
+            <div style={{ padding: "8px 0" }}>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{t("step3.noMatchDestination", { country: label })}</p>
+              {onBackToClassify && (
+                <button onClick={() => onBackToClassify(originData.descriptionEn ?? "")}
+                  className="btn-primary" style={{ marginTop: 12, padding: "10px 20px", fontSize: 13, fontWeight: 700 }}>
+                  {t("step3.classifyByDesc")}
+                </button>
+              )}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>{t("step3.noRecord", { country: label })}</p>
+          )
         )}
       </div>
     );
@@ -929,6 +1020,7 @@ export default function WorkflowPage() {
   const [step, setStep] = useState(1);
   const [codes, setCodes] = useState<any>({});
   const [docs, setDocs] = useState<DocForm | null>(null);
+  const [prefillDesc, setPrefillDesc] = useState("");
 
   useEffect(() => {
     const raw = sessionStorage.getItem("traderoute");
@@ -961,8 +1053,8 @@ export default function WorkflowPage() {
       )}
 
       {step === 1 && <Step1Route onComplete={handleRouteStart} />}
-      {step === 2 && route && <Step2Code route={route} onComplete={(c) => { setCodes(c); setStep(3); }} />}
-      {step === 3 && route && <Step3Compare route={route} codes={codes} onComplete={(c) => { setCodes({ ...codes, ...c }); setStep(4); }} />}
+      {step === 2 && route && <Step2Code route={route} prefillDesc={prefillDesc} onComplete={(c) => { setCodes(c); setPrefillDesc(""); setStep(3); }} />}
+      {step === 3 && route && <Step3Compare route={route} codes={codes} onBackToClassify={(desc) => { setPrefillDesc(desc); setStep(2); }} onComplete={(c) => { setCodes({ ...codes, ...c }); setStep(4); }} />}
       {step === 4 && route && <Step4Documents route={route} codes={codes} onComplete={(d) => { setDocs(d); setStep(5); }} />}
       {step === 5 && route && <Step5Freight route={route} codes={codes} docs={docs!} />}
     </main>
