@@ -70,14 +70,18 @@ export async function rates() {
   return out;
 }
 
+function numOrNull(value: unknown): number | null {
+  return value == null || value === "" ? null : Number(value);
+}
+
 function pickIndia(code: string) {
   return localIndia().then(async (rows) => {
     const row = rows.find((item) => item.hs_code === code);
     const candidate = (await candidates()).find((item) => item.country === "IN" && item.hs_code === code);
     return row
       ? {
-          bcd: Number(row.bcd_rate ?? candidate?.verified_partial_fields?.bcd_rate?.value ?? 0),
-          igst: Number(row.igst_rate ?? candidate?.verified_partial_fields?.igst_rate?.value ?? 0),
+          bcd: numOrNull(row.bcd_rate ?? candidate?.verified_partial_fields?.bcd_rate?.value),
+          igst: numOrNull(row.igst_rate ?? candidate?.verified_partial_fields?.igst_rate?.value),
           importPolicy: row.import_policy ?? candidate?.verified_partial_fields?.import_policy?.value ?? "",
         }
       : null;
@@ -89,8 +93,8 @@ function pickChina(code: string) {
     const row = rows.find((item) => item.hs_code_8 === code || item.hs_code === code || item.hs_code_10 === code);
     return row
       ? {
-          mfn: Number(row.mfn_duty_rate ?? 0),
-          vat: Number(row.vat_rate ?? 0),
+          mfn: numOrNull(row.mfn_duty_rate),
+          vat: numOrNull(row.vat_rate),
         }
       : null;
   });
@@ -133,6 +137,7 @@ export async function calculate(country: "CN" | "IN" | "AE", hsCode: string, cif
         { label: "VAT", amount: vat },
       ],
       totalDuty,
+      ratesMissing: [] as string[],
       landedCost: cif + totalDuty,
     };
   }
@@ -140,8 +145,14 @@ export async function calculate(country: "CN" | "IN" | "AE", hsCode: string, cif
   if (country === "IN") {
     const row = await db.indiaHsCode.findUnique({ where: { hsCode } }).catch(() => null);
     const fallback = await pickIndia(hsCode);
-    const bcdRate = Number(row?.bcdRate ?? fallback?.bcd ?? 0);
-    const igstRate = Number(row?.igstRate ?? fallback?.igst ?? 0);
+    // A code with no published rate on file is calculated at 0% and reported
+    // in `ratesMissing`, so the UI can say the total is incomplete instead of
+    // presenting "no duty" as a fact.
+    const bcdKnown = numOrNull(row?.bcdRate) ?? fallback?.bcd ?? null;
+    const igstKnown = numOrNull(row?.igstRate) ?? fallback?.igst ?? null;
+    const ratesMissing = [bcdKnown == null ? "BCD" : null, igstKnown == null ? "IGST" : null].filter(Boolean) as string[];
+    const bcdRate = bcdKnown ?? 0;
+    const igstRate = igstKnown ?? 0;
     const swsRate = Number(row?.swsRate ?? 10);
     const assessable = cif + landing;
     const bcd = assessable * (bcdRate / 100);
@@ -164,14 +175,18 @@ export async function calculate(country: "CN" | "IN" | "AE", hsCode: string, cif
         { label: "IGST", amount: igst },
       ],
       totalDuty,
+      ratesMissing,
       landedCost: assessable + totalDuty,
     };
   }
 
   const row = await db.chinaHsCode.findUnique({ where: { hsCode8: hsCode } }).catch(() => null);
   const fallback = await pickChina(hsCode);
-  const mfnRate = Number(row?.mfnDutyRate ?? fallback?.mfn ?? 0);
-  const vatRate = Number(row?.vatRate ?? fallback?.vat ?? 0);
+  const mfnKnown = numOrNull(row?.mfnDutyRate) ?? fallback?.mfn ?? null;
+  const vatKnown = numOrNull(row?.vatRate) ?? fallback?.vat ?? null;
+  const ratesMissing = [mfnKnown == null ? "MFN" : null, vatKnown == null ? "VAT" : null].filter(Boolean) as string[];
+  const mfnRate = mfnKnown ?? 0;
+  const vatRate = vatKnown ?? 0;
   const mfn = cif * (mfnRate / 100);
   const vat = (cif + mfn) * (vatRate / 100);
   const totalDuty = mfn + vat;
@@ -186,6 +201,7 @@ export async function calculate(country: "CN" | "IN" | "AE", hsCode: string, cif
       { label: "VAT", amount: vat },
     ],
     totalDuty,
+    ratesMissing,
     landedCost: cif + totalDuty,
   };
 }

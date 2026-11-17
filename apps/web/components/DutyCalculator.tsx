@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { DutyResponse } from "../lib/shared-types";
 import { api } from "../lib/api";
 import { DutyDisclaimer } from "./DutyDisclaimer";
+import { RatesMissingNote } from "./RatesMissingNote";
 
 export function DutyCalculator({
   country = "IN",
@@ -32,6 +33,7 @@ export function DutyCalculator({
       <p className="muted">Leave at 0 to calculate on CIF only. The 1% preset is a convenience estimate; actual charges may differ.</p>
       {result && (
         <>
+          <RatesMissingNote missing={result.ratesMissing} />
           <ul>
             {result.lines.map((l) => (
               <li key={l.label}>

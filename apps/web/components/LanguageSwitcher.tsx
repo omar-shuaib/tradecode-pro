@@ -6,7 +6,7 @@ import { Globe } from "lucide-react";
 const options: { value: Locale; label: string }[] = [
   { value: "en", label: "EN" },
   { value: "zh", label: "中文" },
-  { value: "hi", label: "HI" },
+  { value: "hi", label: "हिन्दी" },
 ];
 
 export function LanguageSwitcher() {
@@ -41,7 +41,9 @@ export function LanguageSwitcher() {
             color: locale === opt.value ? "var(--accent-text, #fff)" : "var(--text-secondary)",
             lineHeight: 1,
           }}
-          aria-label={`Switch to ${opt.value === "en" ? "English" : "中文"}`}
+          aria-label={`Switch to ${opt.value === "en" ? "English" : opt.label}`}
+          aria-pressed={locale === opt.value}
+          lang={opt.value}
         >
           {opt.label}
         </button>

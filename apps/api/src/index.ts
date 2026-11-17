@@ -4,6 +4,7 @@ import express from "express";
 import { readFile } from "node:fs/promises";
 import { rateLimit } from "express-rate-limit";
 import { Registry, collectDefaultMetrics } from "prom-client";
+import { ZodError } from "zod";
 import {
   ClassifyRequestSchema,
   CountrySchema,
@@ -1407,6 +1408,13 @@ app.get("/metrics", async (_req, res) => {
 });
 
 app.use(async (err: any, req: any, res: any, _next: any) => {
+  // Bad input is the caller's mistake, not a server fault: say what was wrong.
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      error: "Invalid request",
+      details: err.issues.map((issue) => ({ field: issue.path.join("."), message: issue.message })),
+    });
+  }
   await db.errorLog
     .create({
       data: { route: req.path, message: String(err.message ?? err), stack: err.stack },

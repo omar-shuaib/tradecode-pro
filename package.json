@@ -16,7 +16,8 @@
     "generate-mappings": "tsx scripts/generate-mappings.ts",
     "scrape-india": "tsx scripts/scrape-india.ts",
     "scrape-china": "tsx scripts/scrape-china.ts",
-    "index": "tsx scripts/index.ts"
+    "index": "tsx scripts/index.ts",
+    "update-fx": "tsx scripts/update-fx.ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

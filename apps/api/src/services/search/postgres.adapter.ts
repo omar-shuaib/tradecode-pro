@@ -2,6 +2,8 @@ import type { CodeResult, Country } from "@tradecode/shared-types";
 import { db } from "../../db.js";
 import { detectProductCategories } from "../../product-categories.js";
 import type { SearchProvider } from "./provider.js";
+import { correctSpelling } from "./spell.js";
+import { expandQuery } from "./synonyms.js";
 
 /**
  * Build a scoring SQL fragment that ranks results by relevance.
@@ -14,7 +16,8 @@ import type { SearchProvider } from "./provider.js";
  *   1. Exact phrase match in description   → 0.85
  *   2. ALL query words in description      → 0.65 + word coverage bonus
  *   3. Most (≥50%) query words appear      → 0.35 + word coverage bonus
- *   4. Trigram similarity fallback         → similarity score (0-1)
+ *   4. Typo fallback: best trigram match of the query against any
+ *      stretch of the description      → word_similarity × 0.6
  *
  * Results are multiplied by a chapter boost:
  *   - If likelyChapters is non-empty and the code's chapter matches → ×1.5
@@ -77,7 +80,7 @@ function buildScoreSql(
         GREATEST((SELECT count(*)::int FROM unnest(regexp_split_to_array(lower(${p}), '\\s+')) word
          WHERE word ~* '^[a-z0-9]+$'), 1)
       , 1.0))
-      ELSE similarity(${col}, ${p})
+      ELSE word_similarity(${p}, ${col}) * 0.6
     END
   `;
 
@@ -112,7 +115,12 @@ function bigintToNumber<T>(rows: T[]): T[] {
 export class PostgresSearchProvider implements SearchProvider {
   async search(q: string, country: Country, limit = 20) {
     const like = `%${q}%`;
-    const likelyChapters = detectProductCategories(q);
+    // Score against tariff vocabulary ("fridge" → "refrigerator"); keep the
+    // raw query for HS-code prefix matching and chapter detection.
+    // Synonyms run first so "fridge" is rewritten rather than "corrected".
+    const expanded = expandQuery(q);
+    const scoreQuery = expanded === q ? expandQuery(await correctSpelling(q)) : expanded;
+    const likelyChapters = [...new Set([...detectProductCategories(q), ...detectProductCategories(scoreQuery)])];
 
     if (country === "BOTH") {
       const perCountry = Math.ceil(limit / 3);
@@ -142,9 +150,9 @@ export class PostgresSearchProvider implements SearchProvider {
           WHERE score >= 0.06 OR "hsCode" LIKE $2
         )
         SELECT * FROM all_results WHERE rn <= $3
-        ORDER BY score DESC
+        ORDER BY score DESC, rn, CASE country WHEN 'IN' THEN 0 WHEN 'CN' THEN 1 ELSE 2 END
         LIMIT $4`,
-        q, like, perCountry, limit
+        scoreQuery, like, perCountry, limit
       );
       return bigintToNumber(rows as any[]) as CodeResult[];
     }
@@ -171,8 +179,8 @@ export class PostgresSearchProvider implements SearchProvider {
         FROM hs_codes_uae
       ) s WHERE (country = $2 OR $2 = 'BOTH') AND (score >= 0.06 OR "hsCode" LIKE $3)
       ORDER BY score DESC LIMIT $4`,
-      q, country, like, limit
+      scoreQuery, country, like, limit
     );
-    return rows as CodeResult[];
+    return bigintToNumber(rows as any[]) as CodeResult[];
   }
 }

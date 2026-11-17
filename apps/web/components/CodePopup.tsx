@@ -7,6 +7,7 @@ import { useTranslation } from "../lib/i18n";
 import { cn } from "../lib/utils";
 import { CompliancePanel } from "./CompliancePanel";
 import { DutyDisclaimer } from "./DutyDisclaimer";
+import { RatesMissingNote } from "./RatesMissingNote";
 import { ExportMenu } from "./ExportMenu";
 
 type CountrySide = {
@@ -584,15 +585,13 @@ export function CodePopup({ code, fromCountry = "IN", onClose }: { code: string;
   const title = china?.hsCode ?? india?.hsCode ?? uae?.hsCode ?? code;
   const subtitle = china?.descriptionEn ?? india?.descriptionEn ?? uae?.descriptionEn ?? "";
   const localTitle = china?.descriptionLocal ?? india?.descriptionLocal ?? uae?.descriptionLocal ?? "";
-  const totalIncidence = indiaDuty?.length
-    ? indiaDuty.reduce((sum, line) => sum + line.amount, 0)
-    : null;
-  const uaeTotalIncidence = uaeDuty?.length
-    ? uaeDuty.reduce((sum, line) => sum + line.amount, 0)
-    : null;
-  const chinaTotalIncidence = chinaDuty?.length
-    ? chinaDuty.reduce((sum, line) => sum + line.amount, 0)
-    : null;
+  // Total incidence = all duties and taxes as a percentage of the CIF value.
+  // (The breakdown lines include CIF and tax bases, so they must not be summed.)
+  const incidencePercent = (result: { totalDuty?: number } | null): number | null =>
+    result && cif > 0 && Number.isFinite(Number(result.totalDuty)) ? (Number(result.totalDuty) / cif) * 100 : null;
+  const totalIncidence = incidencePercent(indiaDutyResult);
+  const uaeTotalIncidence = incidencePercent(uaeDutyResult);
+  const chinaTotalIncidence = incidencePercent(chinaDutyResult);
 
   return (
     <div
@@ -757,6 +756,7 @@ export function CodePopup({ code, fromCountry = "IN", onClose }: { code: string;
 
               {indiaDutyResult ? (
                 <div style={{ marginTop: 16 }}>
+                  <RatesMissingNote missing={indiaDutyResult.ratesMissing} />
                   <div
                     style={{
                       display: "grid",
@@ -864,6 +864,7 @@ export function CodePopup({ code, fromCountry = "IN", onClose }: { code: string;
 
               {uaeDutyResult ? (
                 <div style={{ marginTop: 16 }}>
+                  <RatesMissingNote missing={uaeDutyResult.ratesMissing} />
                   <div
                     style={{
                       display: "grid",
@@ -971,6 +972,7 @@ export function CodePopup({ code, fromCountry = "IN", onClose }: { code: string;
 
               {chinaDutyResult ? (
                 <div style={{ marginTop: 16 }}>
+                  <RatesMissingNote missing={chinaDutyResult.ratesMissing} />
                   <div
                     style={{
                       display: "grid",

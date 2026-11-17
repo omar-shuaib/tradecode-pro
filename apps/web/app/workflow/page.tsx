@@ -6,6 +6,7 @@ import { Check, ArrowLeft, ArrowRight, Loader2, Package, FileText, Truck, Ship, 
 import { jsPDF } from "jspdf";
 import { useTranslation } from "../../lib/i18n";
 import { api } from "../../lib/api";
+import { RatesMissingNote } from "../../components/RatesMissingNote";
 import type { CodeResult } from "../../lib/shared-types";
 import { DUTY_DISCLAIMER_TEXT } from "../../lib/shared-types";
 
@@ -430,6 +431,7 @@ function Step3Compare({ route, codes, onComplete, onBackToClassify }: { route: T
 
             {duty && (
               <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-secondary)" }}>
+                <RatesMissingNote missing={duty.ratesMissing} />
                 {duty.lines.map((l: any) => <div key={l.label} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}><span>{l.label}</span><span style={{ fontFamily: "monospace" }}>${l.amount.toFixed(2)}</span></div>)}
                 <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 4, marginTop: 4, fontWeight: 700 }}>
                   <span>{t("popup.landed.cost")}</span>

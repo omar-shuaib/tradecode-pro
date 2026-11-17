@@ -171,7 +171,7 @@ export default function Home() {
         {[
           { value: "35,000+", labelKey: "home.stat.codes" as const },
           { value: "3", labelKey: "home.stat.countries" as const },
-          { value: "Free & open", labelKey: "" as const },
+          { value: t("home.stat.free"), labelKey: "" as const },
         ].map(({ value, labelKey }) => (
           <div key={value} style={{ textAlign: "center" }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: "var(--accent)" }}>{value}</div>

@@ -49,6 +49,7 @@ export const DutyResponseSchema = z.object({
   lines: z.array(z.object({ label: z.string(), amount: z.number() })),
   totalDuty: z.number(),
   landedCost: z.number(),
+  ratesMissing: z.array(z.string()).optional(),
 });
 export type DutyResponse = z.infer<typeof DutyResponseSchema>;
 

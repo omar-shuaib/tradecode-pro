@@ -77,8 +77,10 @@ export function SearchPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // Run the search named in the URL (the home page search box links here as
+  // /search?q=...), on first load and whenever the URL query changes.
   useEffect(() => {
-    if (initialQ && initialQ !== q) {
+    if (initialQ) {
       setQ(initialQ);
       void executeSearch(initialQ);
     }
@@ -150,7 +152,9 @@ export function SearchPanel() {
     setShowDropdown(false);
     setSelectedCode({ code, country });
     setQ(code);
-    setSearched(true);
+    // Load the matching rows too, so the list behind the popup shows this code
+    // instead of an empty "no results" state.
+    void executeSearch(code);
   }
 
   return (
